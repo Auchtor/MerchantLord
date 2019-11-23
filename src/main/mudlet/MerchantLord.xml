@@ -88,8 +88,22 @@
 		<ScriptGroup isActive="yes" isFolder="yes">
 			<name>MerchantLord</name>
 			<packageName></packageName>
-			<script>MerchantLord = MerchantLord or {}
+			<script>--Script initialization
+MerchantLord = MerchantLord or {}
 
+---------
+--Version
+---------
+MerchantLord.version = MerchantLord.version or {
+	display = "1.0.0",
+	major = 1,
+	minor = 0,
+	bugfix = 0
+}
+
+----------
+--Database
+----------
 MerchantLord.database = db:create("merchantlord", {
 	items = {
 		short_name = "",
@@ -121,78 +135,81 @@ MerchantLord.database = db:create("merchantlord", {
 	}
 })
 
-function MerchantLord.registerShop()
-	local shop = {
-		room_num = gmcp.Room.Info.num,
-		area = gmcp.Room.Info.area,
-		name = gmcp.Room.Info.name
-	}
+-----------
+--Utilities
+-----------
 
-	local shopRow = db:fetch(
-		MerchantLord.database.shops,
-		db:eq(MerchantLord.database.shops.room_num,shop.room_num)
-	)[1]
-	
-	if shopRow == nil then
-		db:add(MerchantLord.database.shops,shop)
-	else
-		shopRow.room_num = shop.room_num
-		shopRow.area = shop.area
-		shopRow.name = shop.name
-		db:update(MerchantLord.database.shops,shopRow)
-	end
-end
-
-function MerchantLord.parseProprietor(proprietor)
-	local shopRow = db:fetch(
-		MerchantLord.database.shops,
-		db:eq(MerchantLord.database.shops.room_num,gmcp.Room.Info.num)
-	)[1]
-
-	
-	if shopRow ~= nil then
-		shopRow.proprietor = proprietor
-		db:update(MerchantLord.database.shops,shopRow)
-	end
-end
-
+--Trims a string of prepending and appending whitespace
 --as from http://lua-users.org/wiki/StringTrim trim6
 function MerchantLord.trimString(s)
-   return s:match'^()%s*$' and '' or s:match'^%s*(.*%S)'
+	 return s:match'^()%s*$' and '' or s:match'^%s*(.*%S)'
 end
 
+--pads s to the right with spaces until it has a length of s
 function MerchantLord.padRight(s, length)
 	return s .. string.rep(" ", length - string.len(s))
 end
 
+--pads s to the left with spaces until it has a length of s
 function MerchantLord.padLeft(s, length)
 	return string.rep(" ", length - string.len(s)) .. s
 end
 
-function MerchantLord.parseItemFromShop(matchedValues)
-	local itemData = {
-		item = {
-			short_name = matchedValues[2],
-			short_description = MerchantLord.trimString(matchedValues[4])
-		},
-		locationData = {
-			item_name = matchedValues[2] .. matchedValues[3],
-			short_description = MerchantLord.trimString(matchedValues[4]),
-			shop = gmcp.Room.Info.num,
-			quantity = matches[5],
-			price = matches[6]
-		}
-	}
-	
-	MerchantLord.updateItemDataFromShop(itemData.item)
-	MerchantLord.updateItemLocationData(itemData.locationData)
+-----------------
+--Database Access
+-----------------
+
+--Retrieves the shops table
+function MerchantLord.queryAllShops()
+	local shopsResult = db:fetch(MerchantLord.database.shops)
+
+	return shopsResult
 end
 
-function MerchantLord.updateItemDataFromShop(itemData)
+--Retrieves item locations with a short description equal to searchString
+function MerchantLord.queryItemLocationsByString(searchString)
+	local itemLocationsResult = db:fetch(MerchantLord.database.item_locations,
+		db:eq(
+			MerchantLord.database.item_locations.short_description,
+			searchString
+		)
+	)
+
+	return itemLocationsResult
+end
+
+--Retrieves item data with a short description like searchString or a short name equal to searchString
+function MerchantLord.queryItemsByString(searchString)
+	local itemResult = db:fetch(MerchantLord.database.items,
+		db:OR(
+			db:like(
+				MerchantLord.database.items.short_description,
+				"% " .. searchString .. " %"
+			),
+			db:like(
+				MerchantLord.database.items.short_description,
+				"% " .. searchString
+			),
+			db:like(
+				MerchantLord.database.items.short_description,
+				searchString .. " %"
+			),
+			db:eq(
+				MerchantLord.database.items.short_name,
+				searchString
+			)
+		)
+	)
+
+	return itemResult
+end
+
+--Updates or inserts item data
+function MerchantLord.upsertItemDataFromShop(itemData)
 	local itemRow = db:fetch(
 		MerchantLord.database.items,
 		db:eq(
-			MerchantLord.database.items.short_description,
+			MerchantLord.dataabase.items.short_description,
 			itemData.short_description
 		)
 	)[1]
@@ -202,7 +219,8 @@ function MerchantLord.updateItemDataFromShop(itemData)
 	end
 end
 
-function MerchantLord.updateItemLocationData(itemLocationData)
+--Updates or inserts item location data
+function MerchantLord.upsertItemLocationData(itemLocationData)
 	local itemLocationRow = db:fetch(
 		MerchantLord.database.item_locations,
 		db:AND(
@@ -230,68 +248,98 @@ function MerchantLord.updateItemLocationData(itemLocationData)
 	end
 end
 
+--Updates or inserts shop information from GMCP
+function MerchantLord.upsertShop(shop)
+	local shopRow = db:fetch(
+		MerchantLord.database.shops,
+		db:eq(MerchantLord.database.shops.room_num,shop.room_num)
+	)[1]
+	
+	if shopRow == nil then
+		db:add(MerchantLord.database.shops,shop)
+	else
+		shopRow.room_num = shop.room_num
+		shopRow.area = shop.area
+		shopRow.name = shop.name
+		db:update(MerchantLord.database.shops,shopRow)
+	end
+end
+
+--Updates store proprietor information
+function MerchantLord.updateProprietor(proprietor)
+	local shopRow = db:fetch(
+		MerchantLord.database.shops,
+		db:eq(MerchantLord.database.shops.room_num,gmcp.Room.Info.num)
+	)[1]
+
+	
+	if shopRow ~= nil then
+		shopRow.proprietor = proprietor
+		db:update(MerchantLord.database.shops,shopRow)
+	end
+end
+
+-----------------------
+--Exposed Methods
+-----------------------
+
+--Formats shop information from GMCP and calls database storage
+function MerchantLord.parseShopInformationFromGMCP()
+	local shop = {
+		room_num = gmcp.Room.Info.num,
+		area = gmcp.Room.Info.area,
+		name = gmcp.Room.Info.name
+	}
+		MerchantLord.upsertShop(shop)
+end
+
+--Formats proprietor information from Wares Trigger
+function MerchantLord.parseProprietor(proprietor)
+		MerchantLord.updateProprietor(proprietor)
+end
+
+--Formats shop item information from trigger and calls database storage
+function MerchantLord.parseItemFromShop(matchedValues)
+	local itemData = {
+		item = {
+			short_name = matchedValues[2],
+			short_description = MerchantLord.trimString(matchedValues[4])
+		},
+		locationData = {
+			item_name = matchedValues[2] .. matchedValues[3],
+			short_description = MerchantLord.trimString(matchedValues[4]),
+			shop = gmcp.Room.Info.num,
+			quantity = matches[5],
+			price = matches[6]
+		}
+	}
+	
+	MerchantLord.upsertItemDataFromShop(itemData.item)
+	MerchantLord.upsertItemLocationData(itemData.locationData)
+end
+
+--Displays a list of items like searchString
 function MerchantLord.findItemByString(searchString)
 	echo("\nSearching database for: " .. searchString .. "\n")
-	local items = MerchantLord.searchItemsByString(searchString)
+	local items = MerchantLord.queryItemsByString(searchString)
 
 	echo("\n" .. MerchantLord.padLeft("name",14) .. MerchantLord.padRight(":",7) .. MerchantLord.padRight("description",41))
 
 	for key,itemData in pairs(items) do
-		echo("\n" .. MerchantLord.padLeft(itemData.short_name,14)  .. MerchantLord.padRight(":",7) .. MerchantLord.padRight(itemData.short_description,41))
+		echo("\n" .. MerchantLord.padLeft(itemData.short_name,14)	.. MerchantLord.padRight(":",7) .. MerchantLord.padRight(itemData.short_description,41))
 	end
 end
 
-function MerchantLord.searchItemsByString(searchString)
-	local itemResult = db:fetch(MerchantLord.database.items,
-		db:OR(
-			db:like(
-				MerchantLord.database.items.short_description,
-				"% " .. searchString .. " %"
-			),
-			db:like(
-				MerchantLord.database.items.short_description,
-				"% " .. searchString
-			),
-			db:like(
-				MerchantLord.database.items.short_description,
-				searchString .. " %"
-			),
-			db:eq(
-				MerchantLord.database.items.short_name,
-				searchString
-			)
-		)
-	)
-
-	return itemResult
-end
-
+--Displays item location and price information for a short description equal to searchString
 function MerchantLord.findItemLocationsByString(searchString)
-  echo("\nSearching database for locations of: " .. searchString .. "\n")
-  local itemLocations = MerchantLord.searchItemLocationsByString(searchString)
+	echo("\nSearching database for locations of: " .. searchString .. "\n")
+	local itemLocations = MerchantLord.searchItemLocationsByString(searchString)
 
 	echo("\n" .. MerchantLord.padLeft("Price",8) .. MerchantLord.padRight(":",3) .. MerchantLord.padRight("Room Number",8))
 
 	for key,itemLocation in pairs(itemLocations) do
 		echo("\n" .. MerchantLord.padLeft(itemLocation.price,8) .. MerchantLord.padRight(":",3) .. MerchantLord.padRight(itemLocation.shop,8))
 	end
-end
-
-function MerchantLord.searchItemLocationsByString(searchString)
-	local itemLocationsResult = db:fetch(MerchantLord.database.item_locations,
-		db:eq(
-			MerchantLord.database.item_locations.short_description,
-			searchString
-		)
-	)
-
-	return itemLocationsResult
-end
-
-function MerchantLord.getAllShops()
-	local shopsResult = db:fetch(MerchantLord.database.shops)
-
-	return shopsResult
 end</script>
 			<eventHandlerList />
 			<Script isActive="yes" isFolder="no">
@@ -303,7 +351,7 @@ end</script>
 	end
 	for index,detail in pairs(gmcp.Room.Info.details) do
 		if detail == "shop" then
-			MerchantLord.registerShop()
+			MerchantLord.parseShopInformationFromGMCP()
 		end
 	end
 end</script>
@@ -315,6 +363,6 @@ end</script>
 	</ScriptPackage>
 	<KeyPackage />
 	<HelpPackage>
-		<helpURL></helpURL>
+		<helpURL>https://github.com/Auchtor/MerchantLord/</helpURL>
 	</HelpPackage>
 </MudletPackage>
