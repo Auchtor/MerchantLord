@@ -275,10 +275,14 @@ function MerchantLord.queryItemLocationsByString(searchString)
       MerchantLord.database.item_locations.short_description,
       searchString
     ),
-    {MerchantLord.database.item_locations.price}
+    MerchantLord.orderItemLocationsByPrice()
   )
 
   return itemLocationsResult
+end
+
+function MerchantLord.orderItemLocationsByPrice()
+  return {MerchantLord.database.item_locations.price}
 end
 
 --Updates or inserts item location data
@@ -330,8 +334,8 @@ function MerchantLord.formatShopDataToRoomNumberTable(shopData)
   return shopTable
 end
 
---Sorts item location data and return it
-function MerchantLord.getSortedItemLocationData(itemLocations)
+--Sorts item location data by price and returns it
+function MerchantLord.getItemLocationDataSortedByPrice(itemLocations)
   local priceTable = {
     priceArray = {},
     itemLocationsByPrice = {}
@@ -348,6 +352,44 @@ function MerchantLord.getSortedItemLocationData(itemLocations)
   table.sort(priceTable.priceArray)
   
   return priceTable
+end
+
+--Sorts item location price data by area and returns it
+function MerchantLord.getItemLocationDataSortedByPriceAndArea(priceTable,shopTable)
+  --Despite this being inefficient, the logic is easier to follow. Keeping it like this
+  --TODO: Consider refactoring into separate functions to avoid pyramid of doom
+  local priceAreaTable = {
+    priceAreaArray = {},
+    itemLocationsByPriceAndArea = {}
+  }
+  
+  for priceIndex,price in pairs(priceTable.priceArray) do
+    priceAreaTable.priceAreaArray[price] = {}
+    priceAreaTable.itemLocationsByPriceAndArea[price] = {}
+    
+    for itemPrice, itemLocation in pairs(priceTable.itemLocationsByPrice[price]) do
+      local shop = shopTable[itemLocation.shop]
+      if shop ~= nil then
+        if priceAreaTable.itemLocationsByPriceAndArea[price][shop.area] == nil then
+          table.insert(priceAreaTable.priceAreaArray[price],shop.area)
+          priceAreaTable.itemLocationsByPriceAndArea[price][shop.area] = {}
+        end
+        table.insert(priceAreaTable.itemLocationsByPriceAndArea[itemLocation.price][shop.area],itemLocation)
+      else
+        --if priceAreaTable.itemLocationsByPriceAndArea[itemLocation.price]["Unknown Area"] == nil then
+        --  table.insert(priceAreaTable.priceAreaArray[itemLocation.price],"Unknown Area")
+        --  priceAreaTable.itemLocationsByPriceAndArea[itemLocation.price]["Unknown Area"] = {}
+        --end
+        --table.insert(priceAreaTable.itemLocationsByPriceAndArea[itemLocation.price]["Unknown Area"],itemLocation)
+      end
+    end
+  end
+
+  for price,priceAreas in pairs(priceAreaTable.priceAreaArray) do
+    table.sort(priceAreas)
+  end
+  
+  return priceAreaTable
 end
 
 -----------------
@@ -445,7 +487,8 @@ function MerchantLord.findItemLocationsByString(searchString)
   local shopData = MerchantLord.queryAllShops()
   local shopTable = MerchantLord.formatShopDataToRoomNumberTable(shopData)
 
-  local priceTable = MerchantLord.getSortedItemLocationData(itemLocations)
+  local priceTable = MerchantLord.getItemLocationDataSortedByPrice(itemLocations)
+  local priceAreaTable = MerchantLord.getItemLocationDataSortedByPriceAndArea(priceTable,shopTable)
 
   local heading = {
     {
@@ -479,47 +522,49 @@ function MerchantLord.findItemLocationsByString(searchString)
   echo("\n" .. MerchantLord.makeStringFromTable(heading))
   
   for _,price in pairs(priceTable.priceArray) do
-    local priceItemLocations = priceTable.itemLocationsByPrice[price]
-
-    for _,itemLocation in pairs(priceItemLocations) do
-      local itemLocationStringTable = {
-        {
-          baseString = itemLocation.price,
-          padding = "left",
-          paddingLength = 8
-        },
-        {
-          baseString = ":",
-          padding = "right",
-          paddingLength = 3
-        },
-        {
-          baseString = itemLocation.shop,
-          padding = "right",
-          paddingLength = 8
-        }
-      }
+    for areaIndex,area in pairs(priceAreaTable.priceAreaArray[price]) do
+      local priceItemLocations = priceAreaTable.itemLocationsByPriceAndArea[price][area]
   
-      if shopTable[itemLocation.shop] ~= nil then
-        table.insert(itemLocationStringTable,
+      for _,itemLocation in pairs(priceItemLocations) do
+        local itemLocationStringTable = {
           {
-            baseString = shopTable[itemLocation.shop].area,
+            baseString = itemLocation.price,
             padding = "left",
-            paddingLength = 21
-          }
-        )
-        table.insert(itemLocationStringTable,
+            paddingLength = 8
+          },
           {
-            baseString = ": "
-          }
-        )
-        table.insert(itemLocationStringTable,
+            baseString = ":",
+            padding = "right",
+            paddingLength = 3
+          },
           {
-            baseString = shopTable[itemLocation.shop].name
+            baseString = itemLocation.shop,
+            padding = "right",
+            paddingLength = 8
           }
-        )
+        }
+    
+        if shopTable[itemLocation.shop] ~= nil then
+          table.insert(itemLocationStringTable,
+            {
+              baseString = shopTable[itemLocation.shop].area,
+              padding = "left",
+              paddingLength = 21
+            }
+          )
+          table.insert(itemLocationStringTable,
+            {
+              baseString = ": "
+            }
+          )
+          table.insert(itemLocationStringTable,
+            {
+              baseString = shopTable[itemLocation.shop].name
+            }
+          )
+        end
+        echo("\n" .. MerchantLord.makeStringFromTable(itemLocationStringTable))
       end
-      echo("\n" .. MerchantLord.makeStringFromTable(itemLocationStringTable))
     end
   end
 end</script>
