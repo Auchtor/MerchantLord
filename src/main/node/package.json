@@ -1,0 +1,19 @@
+{
+  "name": "merchantlord",
+  "version": "1.0.0",
+  "description": "A Merchant Management application for Imperian",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Auchtor/MerchantLord.git"
+  },
+  "author": "Matthew Blanski",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/Auchtor/MerchantLord/issues"
+  },
+  "homepage": "https://github.com/Auchtor/MerchantLord#readme"
+}
