@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE MudletPackage>
+<MudletPackage version="1.001">
+	<TriggerPackage>
+		<TriggerGroup isActive="yes" isFolder="yes" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+			<name>MerchantLord</name>
+			<script></script>
+			<triggerType>0</triggerType>
+			<conditonLineDelta>0</conditonLineDelta>
+			<mStayOpen>0</mStayOpen>
+			<mCommand></mCommand>
+			<packageName></packageName>
+			<mFgColor>#ff0000</mFgColor>
+			<mBgColor>#ffff00</mBgColor>
+			<mSoundFile></mSoundFile>
+			<colorTriggerFgColor>#000000</colorTriggerFgColor>
+			<colorTriggerBgColor>#000000</colorTriggerBgColor>
+			<regexCodeList />
+			<regexCodePropertyList />
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>MerchantLordShopItem</name>
+				<script>MerchantLord.parseItemFromShop(matches)</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand></mCommand>
+				<packageName></packageName>
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile></mSoundFile>
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>^\s+([^\s\d]+)(\d+):\s(.{40,40})\s+([\-\d]+)\s+(\d+)gp$</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>1</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>MerchantLordShopProprietor</name>
+				<script>MerchantLord.parseProprietor(matches[2])</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand></mCommand>
+				<packageName></packageName>
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile></mSoundFile>
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>^Proprietor: ([^\.]+)\.</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>1</integer>
+				</regexCodePropertyList>
+			</Trigger>
+		</TriggerGroup>
+	</TriggerPackage>
+	<TimerPackage />
+	<AliasPackage>
+		<AliasGroup isActive="yes" isFolder="yes">
+			<name>MerchantLord</name>
+			<script></script>
+			<command></command>
+			<packageName></packageName>
+			<regex></regex>
+			<Alias isActive="yes" isFolder="no">
+				<name>List Items</name>
+				<script>MerchantLord.findItemByString(matches[2])</script>
+				<command></command>
+				<packageName></packageName>
+				<regex>^ml list (.+)$</regex>
+			</Alias>
+			<Alias isActive="yes" isFolder="no">
+				<name>Find Item</name>
+				<script>MerchantLord.findItemLocationsByString(matches[2])</script>
+				<command></command>
+				<packageName></packageName>
+				<regex>^ml find (.+)$</regex>
+			</Alias>
+		</AliasGroup>
+	</AliasPackage>
+	<ActionPackage />
+	<ScriptPackage>
+		<ScriptGroup isActive="yes" isFolder="yes">
+			<name>MerchantLord</name>
+			<packageName></packageName>
+			<script>MerchantLord = MerchantLord or {}
+
+MerchantLord.database = db:create("merchantlord", {
+	items = {
+		short_name = "",
+		short_description = "",
+		description = "",
+		designer = "",
+		contents = "",
+		_index = {"short_description"},
+		_unique = {"short_description"},
+		_violations = "REPLACE"
+	},
+	shops = {
+		room_num = 0,
+		name = "",
+		area = "",
+		proprietor = "",
+		_index = {"room_num"},
+		_unique = {"room_num"},
+		_violations = "REPLACE"
+	},
+	item_locations = {
+		item_name = "",
+		short_description = "",
+		shop = 0,
+		quantity = 0,
+		price = 0,
+		last_seen = db:Timestamp("CURRENT_TIMESTAMP"),
+		_index = { {"short_description", "shop"} }
+	}
+})
+
+function MerchantLord.registerShop()
+	local shop = {
+		room_num = gmcp.Room.Info.num,
+		area = gmcp.Room.Info.area,
+		name = gmcp.Room.Info.name
+	}
+
+	local shopRow = db:fetch(
+		MerchantLord.database.shops,
+		db:eq(MerchantLord.database.shops.room_num,shop.room_num)
+	)[1]
+	
+	if shopRow == nil then
+		db:add(MerchantLord.database.shops,shop)
+	else
+		shopRow.room_num = shop.room_num
+		shopRow.area = shop.area
+		shopRow.name = shop.name
+		db:update(MerchantLord.database.shops,shopRow)
+	end
+end
+
+function MerchantLord.parseProprietor(proprietor)
+	local shopRow = db:fetch(
+		MerchantLord.database.shops,
+		db:eq(MerchantLord.database.shops.room_num,gmcp.Room.Info.num)
+	)[1]
+
+	
+	if shopRow ~= nil then
+		shopRow.proprietor = proprietor
+		db:update(MerchantLord.database.shops,shopRow)
+	end
+end
+
+--as from http://lua-users.org/wiki/StringTrim trim6
+function MerchantLord.trimString(s)
+   return s:match'^()%s*$' and '' or s:match'^%s*(.*%S)'
+end
+
+function MerchantLord.padRight(s, length)
+	return s .. string.rep(" ", length - string.len(s))
+end
+
+function MerchantLord.padLeft(s, length)
+	return string.rep(" ", length - string.len(s)) .. s
+end
+
+function MerchantLord.parseItemFromShop(matchedValues)
+	local itemData = {
+		item = {
+			short_name = matchedValues[2],
+			short_description = MerchantLord.trimString(matchedValues[4])
+		},
+		locationData = {
+			item_name = matchedValues[2] .. matchedValues[3],
+			short_description = MerchantLord.trimString(matchedValues[4]),
+			shop = gmcp.Room.Info.num,
+			quantity = matches[5],
+			price = matches[6]
+		}
+	}
+	
+	MerchantLord.updateItemDataFromShop(itemData.item)
+	MerchantLord.updateItemLocationData(itemData.locationData)
+end
+
+function MerchantLord.updateItemDataFromShop(itemData)
+	local itemRow = db:fetch(
+		MerchantLord.database.items,
+		db:eq(
+			MerchantLord.database.items.short_description,
+			itemData.short_description
+		)
+	)[1]
+	
+	if itemRow == nil then
+		db:add(MerchantLord.database.items,itemData)
+	end
+end
+
+function MerchantLord.updateItemLocationData(itemLocationData)
+	local itemLocationRow = db:fetch(
+		MerchantLord.database.item_locations,
+		db:AND(
+			db:eq(
+				MerchantLord.database.item_locations.item_name,
+				itemLocationData.item_name
+			),
+			db:eq(
+				MerchantLord.database.item_locations.shop,
+				itemLocationData.shop
+			)
+		)
+	)[1]
+
+
+	if itemLocationRow == nil then
+		db:add(MerchantLord.database.item_locations,itemLocationData)
+	else
+		itemLocationRow.item_name = itemLocationData.item_name
+		itemLocationRow.shop = itemLocationData.shop
+		itemLocationRow.quantity = itemLocationData.quantity
+		itemLocationRow.price = itemLocationData.price
+		itemLocationRow.last_seen = db:Timestamp("CURRENT_TIMESTAMP")
+		db:update(MerchantLord.database.item_locations,itemLocationRow)
+	end
+end
+
+function MerchantLord.findItemByString(searchString)
+	echo("\nSearching database for: " .. searchString .. "\n")
+	local items = MerchantLord.searchItemsByString(searchString)
+
+	echo("\n" .. MerchantLord.padLeft("name",14) .. MerchantLord.padRight(":",7) .. MerchantLord.padRight("description",41))
+
+	for key,itemData in pairs(items) do
+		echo("\n" .. MerchantLord.padLeft(itemData.short_name,14)  .. MerchantLord.padRight(":",7) .. MerchantLord.padRight(itemData.short_description,41))
+	end
+end
+
+function MerchantLord.searchItemsByString(searchString)
+	local itemResult = db:fetch(MerchantLord.database.items,
+		db:OR(
+			db:like(
+				MerchantLord.database.items.short_description,
+				"% " .. searchString .. " %"
+			),
+			db:like(
+				MerchantLord.database.items.short_description,
+				"% " .. searchString
+			),
+			db:like(
+				MerchantLord.database.items.short_description,
+				searchString .. " %"
+			),
+			db:eq(
+				MerchantLord.database.items.short_name,
+				searchString
+			)
+		)
+	)
+
+	return itemResult
+end
+
+function MerchantLord.findItemLocationsByString(searchString)
+  echo("\nSearching database for locations of: " .. searchString .. "\n")
+  local itemLocations = MerchantLord.searchItemLocationsByString(searchString)
+
+	echo("\n" .. MerchantLord.padLeft("Price",8) .. MerchantLord.padRight(":",3) .. MerchantLord.padRight("Room Number",8))
+
+	for key,itemLocation in pairs(itemLocations) do
+		echo("\n" .. MerchantLord.padLeft(itemLocation.price,8) .. MerchantLord.padRight(":",3) .. MerchantLord.padRight(itemLocation.shop,8))
+	end
+end
+
+function MerchantLord.searchItemLocationsByString(searchString)
+	local itemLocationsResult = db:fetch(MerchantLord.database.item_locations,
+		db:eq(
+			MerchantLord.database.item_locations.short_description,
+			searchString
+		)
+	)
+
+	return itemLocationsResult
+end
+
+function MerchantLord.getAllShops()
+	local shopsResult = db:fetch(MerchantLord.database.shops)
+
+	return shopsResult
+end</script>
+			<eventHandlerList />
+			<Script isActive="yes" isFolder="no">
+				<name>MLGMCPRoomInfo</name>
+				<packageName></packageName>
+				<script>function MLGMCPRoomInfo(event)
+	if gmcp.Room.Info == nil then
+		return
+	end
+	for index,detail in pairs(gmcp.Room.Info.details) do
+		if detail == "shop" then
+			MerchantLord.registerShop()
+		end
+	end
+end</script>
+				<eventHandlerList>
+					<string>gmcp.Room.Info</string>
+				</eventHandlerList>
+			</Script>
+		</ScriptGroup>
+	</ScriptPackage>
+	<KeyPackage />
+	<VariablePackage>
+		<HiddenVariables />
+	</VariablePackage>
+</MudletPackage>
