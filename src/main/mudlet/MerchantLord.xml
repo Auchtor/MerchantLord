@@ -95,9 +95,9 @@ MerchantLord = MerchantLord or {}
 --Version
 ---------
 MerchantLord.version = MerchantLord.version or {
-  display = "1.1.0",
+  display = "1.2.0",
   major = 1,
-  minor = 1,
+  minor = 2,
   bugfix = 0
 }
 
@@ -168,18 +168,18 @@ function MerchantLord.makeStringFromTable(stringTable)
 
   for key,stringData in pairs(stringTable) do
     local stringLine = stringData.baseString
+    
+    if stringData.trim ~= nil then 
+      stringLine = MerchantLord.trimString(stringLine)
+    end
 
-        if stringData.trim ~= nil then
-                stringLine = MerchantLord.trimString(stringLine)
-        end
+    if stringData.padding == "right" then
+      stringLine = MerchantLord.padRight(stringLine,stringData.paddingLength)
+    elseif stringData.padding == "left" then
+      stringLine = MerchantLord.padLeft(stringLine,stringData.paddingLength)
+    end
 
-        if stringData.padding == "right" then
-                stringLine = MerchantLord.padRight(stringLine,stringData.paddingLength)
-        elseif stringData.padding == "left" then
-                stringLine = MerchantLord.padLeft(stringLine,stringData.paddingLength)
-        end
-
-        returnString = returnString .. stringLine
+    returnString = returnString .. stringLine
   end
 
   return returnString
@@ -196,16 +196,35 @@ function MerchantLord.queryAllShops()
   return shopsResult
 end
 
---Retrieves item locations with a short description equal to searchString
-function MerchantLord.queryItemLocationsByString(searchString)
-  local itemLocationsResult = db:fetch(MerchantLord.database.item_locations,
-    db:eq(
-      MerchantLord.database.item_locations.short_description,
-      searchString
-    )
-  )
+--Updates or inserts shop information from GMCP
+function MerchantLord.upsertShop(shop)
+  local shopRow = db:fetch(
+    MerchantLord.database.shops,
+    db:eq(MerchantLord.database.shops.room_num,shop.room_num)
+  )[1]
+  
+  if shopRow == nil then
+    db:add(MerchantLord.database.shops,shop)
+  else
+    shopRow.room_num = shop.room_num
+    shopRow.area = shop.area
+    shopRow.name = shop.name
+    db:update(MerchantLord.database.shops,shopRow)
+  end
+end
 
-  return itemLocationsResult
+--Updates store proprietor information
+function MerchantLord.updateProprietor(proprietor)
+  local shopRow = db:fetch(
+    MerchantLord.database.shops,
+    db:eq(MerchantLord.database.shops.room_num,gmcp.Room.Info.num)
+  )[1]
+
+  
+  if shopRow ~= nil then
+    shopRow.proprietor = proprietor
+    db:update(MerchantLord.database.shops,shopRow)
+  end
 end
 
 --Retrieves item data with a short description like searchString or a short name equal to searchString
@@ -249,6 +268,19 @@ function MerchantLord.upsertItemDataFromShop(itemData)
   end
 end
 
+--Retrieves item locations with a short description equal to searchString
+function MerchantLord.queryItemLocationsByString(searchString)
+  local itemLocationsResult = db:fetch(MerchantLord.database.item_locations,
+    db:eq(
+      MerchantLord.database.item_locations.short_description,
+      searchString
+    ),
+    {MerchantLord.database.item_locations.price}
+  )
+
+  return itemLocationsResult
+end
+
 --Updates or inserts item location data
 function MerchantLord.upsertItemLocationData(itemLocationData)
   local itemLocationRow = db:fetch(
@@ -278,37 +310,6 @@ function MerchantLord.upsertItemLocationData(itemLocationData)
   end
 end
 
---Updates or inserts shop information from GMCP
-function MerchantLord.upsertShop(shop)
-  local shopRow = db:fetch(
-    MerchantLord.database.shops,
-    db:eq(MerchantLord.database.shops.room_num,shop.room_num)
-  )[1]
-  
-  if shopRow == nil then
-    db:add(MerchantLord.database.shops,shop)
-  else
-    shopRow.room_num = shop.room_num
-    shopRow.area = shop.area
-    shopRow.name = shop.name
-    db:update(MerchantLord.database.shops,shopRow)
-  end
-end
-
---Updates store proprietor information
-function MerchantLord.updateProprietor(proprietor)
-  local shopRow = db:fetch(
-    MerchantLord.database.shops,
-    db:eq(MerchantLord.database.shops.room_num,gmcp.Room.Info.num)
-  )[1]
-
-  
-  if shopRow ~= nil then
-    shopRow.proprietor = proprietor
-    db:update(MerchantLord.database.shops,shopRow)
-  end
-end
-
 ----------------
 --Data Utilities
 ----------------
@@ -329,6 +330,26 @@ function MerchantLord.formatShopDataToRoomNumberTable(shopData)
   return shopTable
 end
 
+--Sorts item location data and return it
+function MerchantLord.getSortedItemLocationData(itemLocations)
+  local priceTable = {
+    priceArray = {},
+    itemLocationsByPrice = {}
+  }
+
+  for key,itemLocation in pairs(itemLocations) do
+    if priceTable.itemLocationsByPrice[itemLocation.price] == nil then
+      table.insert(priceTable.priceArray,itemLocation.price)
+      priceTable.itemLocationsByPrice[itemLocation.price] = {}
+    end
+
+    table.insert(priceTable.itemLocationsByPrice[itemLocation.price],itemLocation)
+  end
+  table.sort(priceTable.priceArray)
+  
+  return priceTable
+end
+
 -----------------
 --Exposed Methods
 -----------------
@@ -340,7 +361,8 @@ function MerchantLord.parseShopInformationFromGMCP()
     area = gmcp.Room.Info.area,
     name = gmcp.Room.Info.name
   }
-    MerchantLord.upsertShop(shop)
+
+  MerchantLord.upsertShop(shop)
 end
 
 --Formats proprietor information from Wares Trigger
@@ -418,10 +440,12 @@ end
 --Displays item location and price information for a short description equal to searchString
 function MerchantLord.findItemLocationsByString(searchString)
   echo("\nSearching database for locations of: " .. searchString .. "\n")
-  local itemLocations = MerchantLord.searchItemLocationsByString(searchString)
+  local itemLocations = MerchantLord.queryItemLocationsByString(searchString)
 
   local shopData = MerchantLord.queryAllShops()
   local shopTable = MerchantLord.formatShopDataToRoomNumberTable(shopData)
+
+  local priceTable = MerchantLord.getSortedItemLocationData(itemLocations)
 
   local heading = {
     {
@@ -435,17 +459,17 @@ function MerchantLord.findItemLocationsByString(searchString)
       paddingLength = 3
     },
     {
-      baseString = "Room Number",
+      baseString = "Room #",
       padding = "right",
       paddingLength = 8
     },
     {
       baseString = "Shop Area",
-      padding = "left",
+      padding = "right",
       paddingLength = 21
     },
     {
-      baseString = " - "
+      baseString = ": "
     },
     {
       baseString = "Shop Name"
@@ -453,46 +477,50 @@ function MerchantLord.findItemLocationsByString(searchString)
   }
 
   echo("\n" .. MerchantLord.makeStringFromTable(heading))
+  
+  for _,price in pairs(priceTable.priceArray) do
+    local priceItemLocations = priceTable.itemLocationsByPrice[price]
 
-  for key,itemLocation in pairs(itemLocations) do
-    local itemLocationStringTable = {
-      {
-        baseString = itemLocation.price,
-        padding = "left",
-        paddingLength = 8
-      },
-      {
-        baseString = ":",
-        padding = "right",
-        paddingLength = 3
-      },
-      {
-        baseString = itemLocation.shop,
-        padding = "right",
-        paddingLength = 8
-      }
-    }
-
-    if shopTable[itemLocation.shop] ~= nil then
-      table.insert(itemLocationStringTable,
+    for _,itemLocation in pairs(priceItemLocations) do
+      local itemLocationStringTable = {
         {
-          baseString = shopTable[itemLocation.shop].area,
+          baseString = itemLocation.price,
           padding = "left",
-          paddingLength = 21
-        }
-      )
-      table.insert(itemLocationStringTable,
+          paddingLength = 8
+        },
         {
-          baseString = " - "
-        }
-      )
-      table.insert(itemLocationStringTable,
+          baseString = ":",
+          padding = "right",
+          paddingLength = 3
+        },
         {
-          baseString = shopTable[itemLocation.shop].name
+          baseString = itemLocation.shop,
+          padding = "right",
+          paddingLength = 8
         }
-      )
+      }
+  
+      if shopTable[itemLocation.shop] ~= nil then
+        table.insert(itemLocationStringTable,
+          {
+            baseString = shopTable[itemLocation.shop].area,
+            padding = "left",
+            paddingLength = 21
+          }
+        )
+        table.insert(itemLocationStringTable,
+          {
+            baseString = ": "
+          }
+        )
+        table.insert(itemLocationStringTable,
+          {
+            baseString = shopTable[itemLocation.shop].name
+          }
+        )
+      end
+      echo("\n" .. MerchantLord.makeStringFromTable(itemLocationStringTable))
     end
-    echo("\n" .. MerchantLord.makeStringFromTable(itemLocationStringTable))
   end
 end</script>
 			<eventHandlerList />
