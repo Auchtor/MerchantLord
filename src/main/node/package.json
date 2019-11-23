@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/Auchtor/MerchantLord/issues"
   },
-  "homepage": "https://github.com/Auchtor/MerchantLord#readme"
+  "homepage": "https://github.com/Auchtor/MerchantLord#readme",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
 }
