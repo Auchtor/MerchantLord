@@ -165,7 +165,7 @@
 			</Alias>
 			<Alias isActive="yes" isFolder="no">
 				<name>Probe Next Item</name>
-				<script>MerchantLord.probeNextItem()</script>
+				<script>MerchantLord.probeNextItem(nil)</script>
 				<command></command>
 				<packageName></packageName>
 				<regex>^ml probe$</regex>
@@ -229,6 +229,8 @@ MerchantLord.database = db:create("merchantlord", {
     price = 0,
     last_seen = db:Timestamp("CURRENT_TIMESTAMP"),
     _index = { {"short_description", "shop"} }
+  }, config = {
+    autoProbe = false
   }
 })
 
@@ -285,6 +287,41 @@ end
 -----------------
 --Database Access
 -----------------
+
+--Retrieves config to load into memory
+function MerchantLord.loadConfig()
+  local config = MerchantLord.config
+  
+  if config == nil then
+    config = db:fetch(MerchantLord.database.config)[1]
+
+    if config == nil then
+      MerchantLord.addConfig()
+      --this is fine as it will resolve and pass this check after addConfig
+      config = MerchantLord.loadConfig()
+    end
+    MerchantLord.config = config
+  end
+
+  return config
+end
+
+--Creates and stores the merchantlord config
+function MerchantLord.addConfig()
+    local config = {
+      autoProbe = false
+    }
+    db:add(MerchantLord.database.config,config)
+end
+
+--Stores the config in memory to the database
+function MerchantLord.updateConfig()
+    local config = MerchantLord.config
+    local databaseConfig = MerchantLord.loadConfig()
+    
+    databaseConfig.autoProbe = config.autoProbe
+    db:update(MerchantLord.database.config,databaseConfig)
+end
 
 --Retrieves the shops table
 function MerchantLord.queryAllShops()
@@ -493,6 +530,9 @@ end
 --Data Utilities
 ----------------
 
+--Gets the config from local memory. Loads it if it is not in memory
+
+
 --Gets shop information from GMCP and calls database storage
 function MerchantLord.getShopInformationFromGMCP()
   local shop = {
@@ -596,6 +636,31 @@ function MerchantLord.getItemLocationDataSortedByPriceAndArea(priceTable,shopTab
   return priceAreaTable
 end
 
+--Gets the next unprobed item for a shop
+function getNextUnprobedItem()
+  local shop = MerchantLord.getShopInformationFromGMCP()
+  
+  if shop == nil then
+    return nil
+  end
+  
+  local itemLocations = MerchantLord.queryItemLocationsByShop(shop)
+  local itemLocationTable = MerchantLord.formatItemLocationDataToShortDescriptions(itemLocations)
+  local items = MerchantLord.queryUndescribedItemsByShortDescription(itemLocationTable.shortDescriptions)
+
+  for itemIndex,item in pairs(items) do
+    if item.description == "" then
+      local itemLocation = itemLocationTable.itemLocations[item.short_description]
+      return {
+        item = item,
+        itemLocation = itemLocation
+      }
+    end
+  end
+  
+  return nil
+end
+
 --Clears the current item for data harvest
 function MerchantLord.clearCurrentItem()
   if MerchantLord.currentItemClearCount == nil then
@@ -671,11 +736,13 @@ end
 
 --Displays all relevant information about a specific item
 function MerchantLord.recallItemByShort(shortDescription)
-  echo("\nFinding all information about: " .. shortDescription)
-  local item = MerchantLord.queryItemByShortDescription(shortDescription)
+  local sanitizedSortDescription = MerchantLord.trimString(shortDescription)
+  echo("\nFinding all information about: " .. sanitizedSortDescription)
+  local item = MerchantLord.queryItemByShortDescription(sanitizedSortDescription)
 
   if item == nil then
-    echo("\nCould not find information about: " .. shortDescription)
+    echo("\nCould not find information about: " .. sanitizedSortDescription)
+    return
   end
 
   local displayString = "\nDescription: "
@@ -756,26 +823,14 @@ end
 --Probes the next unprobed item in a shop
 function MerchantLord.probeNextItem()
   echo("\nFinding item to probe in current location")
-  local shop = MerchantLord.getShopInformationFromGMCP()
+  local itemData = MerchantLord.getNextUnprobedItem()
   
-  if shop == nil then
-    echo("\nYou are not in a shop!\n")
-    return
+  if itemData == nil then
+    echo("\nNo unprobed items found!\n")
   end
   
-  local itemLocations = MerchantLord.queryItemLocationsByShop(shop)
-  local itemLocationTable = MerchantLord.formatItemLocationDataToShortDescriptions(itemLocations)
-  local items = MerchantLord.queryUndescribedItemsByShortDescription(itemLocationTable.shortDescriptions)
-
-  for itemIndex,item in pairs(items) do
-    if item.description == "" then
-      local itemLocation = itemLocationTable.itemLocations[item.short_description]
-      MerchantLord.setCurrentItem(item.short_description)
-      send("probe " .. itemLocation.item_name)
-      return
-    end
-  end
-  echo("\nNo unprobed items found!\n")
+  MerchantLord.setCurrentItem(itemData.item.short_description)
+  send("probe " .. itemData.itemLocation.item_name)
 end
 
 --Displays item location and price information for a short description equal to searchString
