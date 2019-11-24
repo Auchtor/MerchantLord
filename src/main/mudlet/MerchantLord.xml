@@ -229,8 +229,13 @@ MerchantLord.database = db:create("merchantlord", {
     price = 0,
     last_seen = db:Timestamp("CURRENT_TIMESTAMP"),
     _index = { {"short_description", "shop"} }
-  }, config = {
-    autoProbe = false
+  },
+  config = {
+    config = 1,
+    autoProbe = false,
+    _index = {"config"},
+    _unique = {"config"},
+    _violations = "REPLACE"
   }
 })
 
@@ -309,6 +314,7 @@ end
 --Creates and stores the merchantlord config
 function MerchantLord.addConfig()
     local config = {
+      config = 1,
       autoProbe = false
     }
     db:add(MerchantLord.database.config,config)
@@ -443,7 +449,6 @@ function MerchantLord.updateItemDesigner(currentItem,designer)
   local item = MerchantLord.queryItemByShortDescription(currentItem)
   item.designer = designer
   db:update(MerchantLord.database.items,item)
-  echo("DESIGNER")
 end
 
 --Item Database order by clause for short name and short description
@@ -637,7 +642,7 @@ function MerchantLord.getItemLocationDataSortedByPriceAndArea(priceTable,shopTab
 end
 
 --Gets the next unprobed item for a shop
-function getNextUnprobedItem()
+function MerchantLord.getNextUnprobedItem()
   local shop = MerchantLord.getShopInformationFromGMCP()
   
   if shop == nil then
@@ -663,8 +668,13 @@ end
 
 --Clears the current item for data harvest
 function MerchantLord.clearCurrentItem()
+  if MerchantLord.currentItem == nil then
+    return
+  end
+
   if MerchantLord.currentItemClearCount == nil then
     MerchantLord.currentItemClearCount = 1
+    tempTimer(1, [[MerchantLord.probeNextItem(true)]])
   else
     MerchantLord.currentItemClearCount = nil
     MerchantLord.currentItem = nil
@@ -821,12 +831,15 @@ function MerchantLord.findItemByString(searchString)
 end
 
 --Probes the next unprobed item in a shop
-function MerchantLord.probeNextItem()
+function MerchantLord.probeNextItem(silent)
   echo("\nFinding item to probe in current location")
   local itemData = MerchantLord.getNextUnprobedItem()
   
   if itemData == nil then
-    echo("\nNo unprobed items found!\n")
+    if silent ~= nil then
+      echo("\nNo unprobed items found!\n")
+    end
+    return
   end
   
   MerchantLord.setCurrentItem(itemData.item.short_description)
