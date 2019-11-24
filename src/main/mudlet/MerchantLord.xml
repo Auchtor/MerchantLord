@@ -165,10 +165,17 @@
 			</Alias>
 			<Alias isActive="yes" isFolder="no">
 				<name>Probe Next Item</name>
-				<script></script>
+				<script>MerchantLord.probeNextItem()</script>
 				<command></command>
 				<packageName></packageName>
 				<regex>^ml probe$</regex>
+			</Alias>
+			<Alias isActive="yes" isFolder="no">
+				<name>Recall Item</name>
+				<script>MerchantLord.recallItemByShort(matches[2])</script>
+				<command></command>
+				<packageName></packageName>
+				<regex>^ml recall (.+)$</regex>
 			</Alias>
 		</AliasGroup>
 	</AliasPackage>
@@ -660,6 +667,43 @@ function MerchantLord.parseItemDesigner(designer)
   if MerchantLord.currentItem ~= nil then
     MerchantLord.updateItemDesigner(MerchantLord.currentItem,designer)
   end
+end
+
+--Displays all relevant information about a specific item
+function MerchantLord.recallItemByShort(shortDescription)
+  echo("\nFinding all information about: " .. shortDescription)
+  local item = MerchantLord.queryItemByShortDescription(shortDescription)
+
+  if item == nil then
+    echo("\nCould not find information about: " .. shortDescription)
+  end
+
+  local displayString = "\nDescription: "
+  
+  if item.description ~= nil then
+    displayString = displayString .. item.description
+  else
+    displayString = displayString .. "Unknown"
+  end
+  
+  displayString = displayString .. "\nItem Type: "
+  
+  if item.short_name ~= "" then
+    displayString = displayString .. item.short_name
+  else
+    displayString = displayString .. "Unknown"
+  end
+  
+  if item.crafter ~= "" then
+    displayString = displayString .. "\nCrafter: " .. item.crafter
+  end
+  
+  if item.designer ~= "" then
+    displayString = displayString .. "\nDesigner: " .. item.designer
+  end
+  
+  displayString = displayString .. "\n"
+  echo(displayString)
 end
 
 --Displays a list of items like searchString
