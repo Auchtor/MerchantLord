@@ -57,6 +57,88 @@
 					<integer>1</integer>
 				</regexCodePropertyList>
 			</Trigger>
+			<TriggerGroup isActive="yes" isFolder="yes" isTempTrigger="no" isMultiline="yes" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>Item Description</name>
+				<script>MerchantLord.parseItemDescription(multimatches[2][2])</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>1</conditonLineDelta>
+				<mStayOpen>6</mStayOpen>
+				<mCommand></mCommand>
+				<packageName></packageName>
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile></mSoundFile>
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>^You inspect the item that is for sale\:$</string>
+					<string>^((?!You inspect the item that is for sale).*)$</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>1</integer>
+					<integer>1</integer>
+				</regexCodePropertyList>
+				<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+					<name>Liquid</name>
+					<script></script>
+					<triggerType>0</triggerType>
+					<conditonLineDelta>0</conditonLineDelta>
+					<mStayOpen>0</mStayOpen>
+					<mCommand></mCommand>
+					<packageName></packageName>
+					<mFgColor>#ff0000</mFgColor>
+					<mBgColor>#ffff00</mBgColor>
+					<mSoundFile></mSoundFile>
+					<colorTriggerFgColor>#000000</colorTriggerFgColor>
+					<colorTriggerBgColor>#000000</colorTriggerBgColor>
+					<regexCodeList>
+						<string>^[^\(]+\(([^)]+)\) sloshes about in it\.$</string>
+					</regexCodeList>
+					<regexCodePropertyList>
+						<integer>1</integer>
+					</regexCodePropertyList>
+				</Trigger>
+				<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+					<name>Crafter</name>
+					<script>MerchantLord.parseItemCrafter(matches[2])</script>
+					<triggerType>0</triggerType>
+					<conditonLineDelta>0</conditonLineDelta>
+					<mStayOpen>0</mStayOpen>
+					<mCommand></mCommand>
+					<packageName></packageName>
+					<mFgColor>#ff0000</mFgColor>
+					<mBgColor>#ffff00</mBgColor>
+					<mSoundFile></mSoundFile>
+					<colorTriggerFgColor>#000000</colorTriggerFgColor>
+					<colorTriggerBgColor>#000000</colorTriggerBgColor>
+					<regexCodeList>
+						<string>^It bears the distinctive mark of ([^\.]+)\.$</string>
+					</regexCodeList>
+					<regexCodePropertyList>
+						<integer>1</integer>
+					</regexCodePropertyList>
+				</Trigger>
+				<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+					<name>Designer</name>
+					<script>MerchantLord.parseItemDesigner(matches[2])</script>
+					<triggerType>0</triggerType>
+					<conditonLineDelta>0</conditonLineDelta>
+					<mStayOpen>0</mStayOpen>
+					<mCommand></mCommand>
+					<packageName></packageName>
+					<mFgColor>#ff0000</mFgColor>
+					<mBgColor>#ffff00</mBgColor>
+					<mSoundFile></mSoundFile>
+					<colorTriggerFgColor>#000000</colorTriggerFgColor>
+					<colorTriggerBgColor>#000000</colorTriggerBgColor>
+					<regexCodeList>
+						<string>^A small crafter's mark suggests that it is of Dias's design.$</string>
+					</regexCodeList>
+					<regexCodePropertyList>
+						<integer>1</integer>
+					</regexCodePropertyList>
+				</Trigger>
+			</TriggerGroup>
 		</TriggerGroup>
 	</TriggerPackage>
 	<TimerPackage />
@@ -110,6 +192,7 @@ MerchantLord.database = db:create("merchantlord", {
     short_description = "",
     description = "",
     designer = "",
+    crafter = "",
     contents = "",
     _index = {"short_description"},
     _unique = {"short_description"},
@@ -196,13 +279,20 @@ function MerchantLord.queryAllShops()
   return shopsResult
 end
 
---Updates or inserts shop information from GMCP
-function MerchantLord.upsertShop(shop)
+--Retrieves a shop by room number
+function MerchantLord.queryShopByNumber(shopNumber)
   local shopRow = db:fetch(
     MerchantLord.database.shops,
-    db:eq(MerchantLord.database.shops.room_num,shop.room_num)
+    db:eq(MerchantLord.database.shops.room_num,shopNumber)
   )[1]
-  
+
+  return shopRow
+end
+
+--Updates or inserts shop information from GMCP
+function MerchantLord.upsertShop(shop)
+  local shopRow = MerchantLord.queryShopByNumber(shop.room_num)
+
   if shopRow == nil then
     db:add(MerchantLord.database.shops,shop)
   else
@@ -254,6 +344,40 @@ function MerchantLord.queryItemsByString(searchString)
   return itemResult
 end
 
+--Retrieves item data with an exact short description
+function MerchantLord.queryItemByShortDescription(searchString)
+  local itemResult = db:fetch(MerchantLord.database.items,
+    db:eq(
+      MerchantLord.database.items.short_description,
+      searchString
+    )
+  )
+
+  return itemResult
+end
+
+--Updates item data with an exact description
+function MerchantLord.updateItemCrafter(currentItem,crafter)
+  local item = MerchantLord.queryItemByShortDescription(currentItem)
+  item.crafter = crafter
+  echo("CRAFTER")
+end
+
+--Updates item data with an exact description
+function MerchantLord.updateItemDescription(currentItem,itemDescription)
+  local item = MerchantLord.queryItemByShortDescription(currentItem)
+  item.description = itemDescription
+  echo("DESCRIPTION")
+end
+
+--Updates item data with an exact description
+function MerchantLord.updateItemDesigner(currentItem,designer)
+  local item = MerchantLord.queryItemByShortDescription(currentItem)
+  item.designer = designer
+  echo("DESIGNER")
+end
+
+--Item Database order by clause for short name and short description
 function MerchantLord.orderItemsByShortNameAndShortDescription()
   return {MerchantLord.database.items.short_name,MerchantLord.database.items.short_description}
 end
@@ -286,6 +410,19 @@ function MerchantLord.queryItemLocationsByString(searchString)
   return itemLocationsResult
 end
 
+--Retrieves item locations by shop
+function MerchantLord.queryItemLocationsByShop(shop)
+  local itemLocationsResult = db:fetch(MerchantLord.database.item_locations,
+    db:eq(
+      MerchantLord.database.item_locations.shop,
+      shop.room_number
+    )
+  )
+
+  return itemLocationsResult
+end
+
+--Item Locations Database order by price
 function MerchantLord.orderItemLocationsByPrice()
   return {MerchantLord.database.item_locations.price}
 end
@@ -322,6 +459,17 @@ end
 ----------------
 --Data Utilities
 ----------------
+
+--Gets shop information from GMCP and calls database storage
+function MerchantLord.getShopInformationFromGMCP()
+  local shop = {
+    room_num = gmcp.Room.Info.num,
+    area = gmcp.Room.Info.area,
+    name = gmcp.Room.Info.name
+  }
+
+  return shop
+end
 
 --Formats shop data into a room number indexed table
 function MerchantLord.formatShopDataToRoomNumberTable(shopData)
@@ -397,17 +545,23 @@ function MerchantLord.getItemLocationDataSortedByPriceAndArea(priceTable,shopTab
   return priceAreaTable
 end
 
+--Clears the current item for data harvest
+function MerchantLord.clearCurrentItem()
+  MerchantLord.currentItem = nil
+end
+
+--Sets the current item for data harvest
+function MerchantLord.setCurrentItem(item)
+  MerchantLord.currentItem = item
+end
+
 -----------------
 --Exposed Methods
 -----------------
 
 --Formats shop information from GMCP and calls database storage
 function MerchantLord.parseShopInformationFromGMCP()
-  local shop = {
-    room_num = gmcp.Room.Info.num,
-    area = gmcp.Room.Info.area,
-    name = gmcp.Room.Info.name
-  }
+  local shop = MerchantLord.getShopInformationFromGMCP()
 
   MerchantLord.upsertShop(shop)
 end
@@ -435,6 +589,27 @@ function MerchantLord.parseItemFromShop(matchedValues)
   
   MerchantLord.upsertItemDataFromShop(itemData.item)
   MerchantLord.upsertItemLocationData(itemData.locationData)
+end
+
+--Formats an item's description and stores it
+function MerchantLord.parseItemDescription(itemDescription)
+  if MerchantLord.currentItem ~= nil then
+    MerchantLord.updateItemDescription(MerchantLord.currentItem,itemDescription)
+  end
+end
+
+--Formats an item's crafter and stores it
+function MerchantLord.parseItemCrafter(crafter)
+  if MerchantLord.currentItem ~= nil then
+    MerchantLord.updateItemCrafter(MerchantLord.currentItem,crafter)
+  end
+end
+
+--Formats an item's designer and stores it
+function MerchantLord.parseItemDesigner(designer)
+  if MerchantLord.currentItem ~= nil then
+    MerchantLord.updateItemDesigner(MerchantLord.currentItem,designer)
+  end
 end
 
 --Displays a list of items like searchString
@@ -482,6 +657,14 @@ function MerchantLord.findItemByString(searchString)
     }
     echo("\n" .. MerchantLord.makeStringFromTable(itemStringTable))
   end
+end
+
+--Probes the next unprobed item in a shop
+function MerchantLord.probeNextItem()
+  local shop = MerchantLord.getShopInformationFromGMCP()
+  local itemLocations = MerchantLord.queryUnprobedItemLocationsByShop(shop)
+  --get item short descriptions
+  --get items by short description with item number from item location
 end
 
 --Displays item location and price information for a short description equal to searchString
@@ -589,6 +772,16 @@ end</script>
 end</script>
 				<eventHandlerList>
 					<string>gmcp.Room.Info</string>
+				</eventHandlerList>
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>MLMGMCPCharVitals</name>
+				<packageName></packageName>
+				<script>function MLMGMCPCharVitals(event)
+  MerchantLord.clearCurrentItem()
+end</script>
+				<eventHandlerList>
+					<string>gmcp.Char.Vitals</string>
 				</eventHandlerList>
 			</Script>
 		</ScriptGroup>
