@@ -247,10 +247,15 @@ function MerchantLord.queryItemsByString(searchString)
         MerchantLord.database.items.short_name,
         searchString
       )
-    )
+    ),
+    MerchantLord.orderItemsByShortNameAndShortDescription()
   )
 
   return itemResult
+end
+
+function MerchantLord.orderItemsByShortNameAndShortDescription()
+  return {MerchantLord.database.items.short_name,MerchantLord.database.items.short_description}
 end
 
 --Updates or inserts item data
