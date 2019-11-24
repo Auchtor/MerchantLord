@@ -132,7 +132,7 @@
 					<colorTriggerFgColor>#000000</colorTriggerFgColor>
 					<colorTriggerBgColor>#000000</colorTriggerBgColor>
 					<regexCodeList>
-						<string>^A small crafter's mark suggests that it is of Dias's design.$</string>
+						<string>^A small crafter's mark suggests that it is of ([^']+)'s design\.$</string>
 					</regexCodeList>
 					<regexCodePropertyList>
 						<integer>1</integer>
@@ -487,6 +487,24 @@ function MerchantLord.formatShopDataToRoomNumberTable(shopData)
   return shopTable
 end
 
+--Formats item location data into a short description indexed table
+function MerchantLord.formatItemLocationDataToShortDescriptions(itemLocationData)
+  local itemLocationTable = {
+    itemsLocations = {},
+    shortDescriptions = {}
+  }
+
+  for key,itemLocation in pairs(itemLocationData) do
+    itemLocationTable.itemsLocations[itemLocationData.item_name] = {
+      item_name = itemLocationData.item_name,
+      short_description = itemLocationData.short_description
+    }
+    table.insert(itemLocationTable.shortDescriptions,itemLocationData.short_description)
+  end
+
+  return shopTable
+end
+
 --Sorts item location data by price and returns it
 function MerchantLord.getItemLocationDataSortedByPrice(itemLocations)
   local priceTable = {
@@ -661,10 +679,27 @@ end
 
 --Probes the next unprobed item in a shop
 function MerchantLord.probeNextItem()
+  echo("\nFinding item to probe in current location")
   local shop = MerchantLord.getShopInformationFromGMCP()
+  
+  if shop == nil then
+    echo("\nYou are not in a shop!\n")
+    return
+  end
+  
   local itemLocations = MerchantLord.queryUnprobedItemLocationsByShop(shop)
-  --get item short descriptions
-  --get items by short description with item number from item location
+  local itemLocationTable = MerchantLord.formatItemLocationDataToShortDescriptions(itemLocationData)
+  --local items = MerchantLord.getUnprobedItemsByShortDescription(itemLocationTable.shortDescriptions)
+
+  for itemIndex,item in pairs(items) do
+    if item.description == nil then
+      local itemLocation = itemLocationTable.itemLocations[item.short_description]
+      MerchantLord.setCurrentItem(item.short_description)
+      send("probe " .. itemLocation.item_name)
+      return
+    end
+  end
+  echo("\nNo unprobed items found!\n")
 end
 
 --Displays item location and price information for a short description equal to searchString
