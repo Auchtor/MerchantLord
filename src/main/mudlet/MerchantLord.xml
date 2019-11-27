@@ -177,6 +177,13 @@
 				<packageName></packageName>
 				<regex>^ml recall (.+)$</regex>
 			</Alias>
+			<Alias isActive="yes" isFolder="no">
+				<name>Settings</name>
+				<script>MerchantLord.processSettingsCommand(matches[2])</script>
+				<command></command>
+				<packageName></packageName>
+				<regex>^ml settings (.+)$</regex>
+			</Alias>
 		</AliasGroup>
 	</AliasPackage>
 	<ActionPackage />
@@ -230,11 +237,11 @@ MerchantLord.database = db:create("merchantlord", {
     last_seen = db:Timestamp("CURRENT_TIMESTAMP"),
     _index = { {"short_description", "shop"} }
   },
-  config = {
-    config = 1,
-    autoProbe = false,
-    _index = {"config"},
-    _unique = {"config"},
+  settings = {
+    name = "default",
+    auto_probe = "off",
+    _index = {"name"},
+    _unique = {"name"},
     _violations = "REPLACE"
   }
 })
@@ -289,44 +296,43 @@ function MerchantLord.makeStringFromTable(stringTable)
   return returnString
 end
 
+--Taken from http://lua-users.org/wiki/SplitJoin
+--Splits a string into a table
+function MerchantLord.splitString(stringToSplit,separator)
+   local separator = separator or " "
+   local fields = {}
+   local pattern = string.format("([^%s]+)", separator)
+   string.gsub(stringToSplit,pattern, function(c) fields[#fields+1] = c end)
+   return fields
+end
+
 -----------------
 --Database Access
 -----------------
 
---Retrieves config to load into memory
-function MerchantLord.loadConfig()
-  local config = MerchantLord.config
-  
-  if config == nil then
-    config = db:fetch(MerchantLord.database.config)[1]
+--Gets the settings from local memory. Loads it if it is not in memory
+function MerchantLord.loadSettings()
+  local settings = db:fetch(MerchantLord.database.settings)[1]
 
-    if config == nil then
-      MerchantLord.addConfig()
-      --this is fine as it will resolve and pass this check after addConfig
-      config = MerchantLord.loadConfig()
-    end
-    MerchantLord.config = config
-  end
-
-  return config
+  return settings
 end
 
---Creates and stores the merchantlord config
-function MerchantLord.addConfig()
-    local config = {
-      config = 1,
-      autoProbe = false
+--Creates and stores the merchantlord settings
+function MerchantLord.addSettings()
+    local settings = {
+      name = "default",
+      auto_probe = "off"
     }
-    db:add(MerchantLord.database.config,config)
+    db:add(MerchantLord.database.settings,settings)
 end
 
---Stores the config in memory to the database
-function MerchantLord.updateConfig()
-    local config = MerchantLord.config
-    local databaseConfig = MerchantLord.loadConfig()
+--Stores the settings in memory to the database
+function MerchantLord.updateSettings()
+    local settings = MerchantLord.settings
+    local databaseSettings = MerchantLord.loadSettings()
     
-    databaseConfig.autoProbe = config.autoProbe
-    db:update(MerchantLord.database.config,databaseConfig)
+    databaseSettings.auto_probe = settings.auto_probe
+    db:update(MerchantLord.database.settings,databaseSettings)
 end
 
 --Retrieves the shops table
@@ -531,12 +537,49 @@ function MerchantLord.upsertItemLocationData(itemLocationData)
   end
 end
 
-----------------
---Data Utilities
-----------------
+----------------------------
+--Data Utilities and Helpers
+----------------------------
 
---Gets the config from local memory. Loads it if it is not in memory
+--Gets the settings from local memory. Loads it if it is not in memory
+function MerchantLord.getSettings()
+  local settings = MerchantLord.settings
+  
+  if settings == nil then
+    settings = MerchantLord.loadSettings()
 
+    if settings == nil then
+      MerchantLord.addSettings()
+      --this is fine as it will resolve and pass this check after addSettings
+      settings = MerchantLord.loadSettings()
+    end
+    MerchantLord.settings = settings
+  end
+
+  return settings
+end
+
+--Sets autoprobe for merchantlord
+function MerchantLord.setAutoProbe(status)
+  MerchantLord.getSettings()
+  
+  local validStatus = string.lower(status)
+
+  if validStatus == "on" then
+    MerchantLord.settings.auto_probe = "on"
+  elseif validStatus == "off" then
+    MerchantLord.settings.auto_probe = "off"
+  end
+  
+  echo("\nMerchant Lord Autoprobe: " .. MerchantLord.getAutoProbe() .. "\n")
+  MerchantLord.updateSettings()
+end
+
+--Gets the autoprobe setting safely
+function MerchantLord.getAutoProbe()
+  MerchantLord.getSettings()
+  return MerchantLord.settings.auto_probe
+end
 
 --Gets shop information from GMCP and calls database storage
 function MerchantLord.getShopInformationFromGMCP()
@@ -674,7 +717,9 @@ function MerchantLord.clearCurrentItem()
 
   if MerchantLord.currentItemClearCount == nil then
     MerchantLord.currentItemClearCount = 1
-    tempTimer(1, [[MerchantLord.probeNextItem(true)]])
+    if MerchantLord.getAutoProbe() == "on" then
+      tempTimer(1, [[MerchantLord.probeNextItem(true)]])
+    end
   else
     MerchantLord.currentItemClearCount = nil
     MerchantLord.currentItem = nil
@@ -690,6 +735,19 @@ end
 -----------------
 --Exposed Methods
 -----------------
+
+--Entry point for settings command
+function MerchantLord.processSettingsCommand(settingsArguments)
+  local argumentsTable = MerchantLord.splitString(settingsArguments," ")
+  local settingsCommand = string.lower(argumentsTable[1])
+
+  --TODO: Make this a table to be more elegant.
+  if settingsCommand == "autoprobe" then
+    MerchantLord.setAutoProbe(argumentsTable[2])
+  else
+    echo("\nDid not recognize the Merchant Lord setting: " .. argumentsTable .. ".\n")    
+  end
+end
 
 --Formats shop information from GMCP and calls database storage
 function MerchantLord.parseShopInformationFromGMCP()
