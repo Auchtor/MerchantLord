@@ -165,7 +165,7 @@
 			</Alias>
 			<Alias isActive="yes" isFolder="no">
 				<name>Probe Next Item</name>
-				<script>MerchantLord.probeNextItem()</script>
+				<script>MerchantLord.probeNextItem(nil)</script>
 				<command></command>
 				<packageName></packageName>
 				<regex>^ml probe$</regex>
@@ -176,6 +176,13 @@
 				<command></command>
 				<packageName></packageName>
 				<regex>^ml recall (.+)$</regex>
+			</Alias>
+			<Alias isActive="yes" isFolder="no">
+				<name>Settings</name>
+				<script>MerchantLord.processSettingsCommand(matches[2])</script>
+				<command></command>
+				<packageName></packageName>
+				<regex>^ml settings (.+)$</regex>
 			</Alias>
 		</AliasGroup>
 	</AliasPackage>
@@ -229,6 +236,13 @@ MerchantLord.database = db:create("merchantlord", {
     price = 0,
     last_seen = db:Timestamp("CURRENT_TIMESTAMP"),
     _index = { {"short_description", "shop"} }
+  },
+  settings = {
+    name = "default",
+    auto_probe = "off",
+    _index = {"name"},
+    _unique = {"name"},
+    _violations = "REPLACE"
   }
 })
 
@@ -282,9 +296,44 @@ function MerchantLord.makeStringFromTable(stringTable)
   return returnString
 end
 
+--Taken from http://lua-users.org/wiki/SplitJoin
+--Splits a string into a table
+function MerchantLord.splitString(stringToSplit,separator)
+   local separator = separator or " "
+   local fields = {}
+   local pattern = string.format("([^%s]+)", separator)
+   string.gsub(stringToSplit,pattern, function(c) fields[#fields+1] = c end)
+   return fields
+end
+
 -----------------
 --Database Access
 -----------------
+
+--Gets the settings from local memory. Loads it if it is not in memory
+function MerchantLord.loadSettings()
+  local settings = db:fetch(MerchantLord.database.settings)[1]
+
+  return settings
+end
+
+--Creates and stores the merchantlord settings
+function MerchantLord.addSettings()
+    local settings = {
+      name = "default",
+      auto_probe = "off"
+    }
+    db:add(MerchantLord.database.settings,settings)
+end
+
+--Stores the settings in memory to the database
+function MerchantLord.updateSettings()
+    local settings = MerchantLord.settings
+    local databaseSettings = MerchantLord.loadSettings()
+    
+    databaseSettings.auto_probe = settings.auto_probe
+    db:update(MerchantLord.database.settings,databaseSettings)
+end
 
 --Retrieves the shops table
 function MerchantLord.queryAllShops()
@@ -406,7 +455,6 @@ function MerchantLord.updateItemDesigner(currentItem,designer)
   local item = MerchantLord.queryItemByShortDescription(currentItem)
   item.designer = designer
   db:update(MerchantLord.database.items,item)
-  echo("DESIGNER")
 end
 
 --Item Database order by clause for short name and short description
@@ -489,9 +537,49 @@ function MerchantLord.upsertItemLocationData(itemLocationData)
   end
 end
 
-----------------
---Data Utilities
-----------------
+----------------------------
+--Data Utilities and Helpers
+----------------------------
+
+--Gets the settings from local memory. Loads it if it is not in memory
+function MerchantLord.getSettings()
+  local settings = MerchantLord.settings
+  
+  if settings == nil then
+    settings = MerchantLord.loadSettings()
+
+    if settings == nil then
+      MerchantLord.addSettings()
+      --this is fine as it will resolve and pass this check after addSettings
+      settings = MerchantLord.loadSettings()
+    end
+    MerchantLord.settings = settings
+  end
+
+  return settings
+end
+
+--Sets autoprobe for merchantlord
+function MerchantLord.setAutoProbe(status)
+  MerchantLord.getSettings()
+  
+  local validStatus = string.lower(status)
+
+  if validStatus == "on" then
+    MerchantLord.settings.auto_probe = "on"
+  elseif validStatus == "off" then
+    MerchantLord.settings.auto_probe = "off"
+  end
+  
+  echo("\nMerchant Lord Autoprobe: " .. MerchantLord.getAutoProbe() .. "\n")
+  MerchantLord.updateSettings()
+end
+
+--Gets the autoprobe setting safely
+function MerchantLord.getAutoProbe()
+  MerchantLord.getSettings()
+  return MerchantLord.settings.auto_probe
+end
 
 --Gets shop information from GMCP and calls database storage
 function MerchantLord.getShopInformationFromGMCP()
@@ -596,10 +684,42 @@ function MerchantLord.getItemLocationDataSortedByPriceAndArea(priceTable,shopTab
   return priceAreaTable
 end
 
+--Gets the next unprobed item for a shop
+function MerchantLord.getNextUnprobedItem()
+  local shop = MerchantLord.getShopInformationFromGMCP()
+  
+  if shop == nil then
+    return nil
+  end
+  
+  local itemLocations = MerchantLord.queryItemLocationsByShop(shop)
+  local itemLocationTable = MerchantLord.formatItemLocationDataToShortDescriptions(itemLocations)
+  local items = MerchantLord.queryUndescribedItemsByShortDescription(itemLocationTable.shortDescriptions)
+
+  for itemIndex,item in pairs(items) do
+    if item.description == "" then
+      local itemLocation = itemLocationTable.itemLocations[item.short_description]
+      return {
+        item = item,
+        itemLocation = itemLocation
+      }
+    end
+  end
+  
+  return nil
+end
+
 --Clears the current item for data harvest
 function MerchantLord.clearCurrentItem()
+  if MerchantLord.currentItem == nil then
+    return
+  end
+
   if MerchantLord.currentItemClearCount == nil then
     MerchantLord.currentItemClearCount = 1
+    if MerchantLord.getAutoProbe() == "on" then
+      tempTimer(1, [[MerchantLord.probeNextItem(true)]])
+    end
   else
     MerchantLord.currentItemClearCount = nil
     MerchantLord.currentItem = nil
@@ -615,6 +735,19 @@ end
 -----------------
 --Exposed Methods
 -----------------
+
+--Entry point for settings command
+function MerchantLord.processSettingsCommand(settingsArguments)
+  local argumentsTable = MerchantLord.splitString(settingsArguments," ")
+  local settingsCommand = string.lower(argumentsTable[1])
+
+  --TODO: Make this a table to be more elegant.
+  if settingsCommand == "autoprobe" then
+    MerchantLord.setAutoProbe(argumentsTable[2])
+  else
+    echo("\nDid not recognize the Merchant Lord setting: " .. argumentsTable .. ".\n")    
+  end
+end
 
 --Formats shop information from GMCP and calls database storage
 function MerchantLord.parseShopInformationFromGMCP()
@@ -671,11 +804,13 @@ end
 
 --Displays all relevant information about a specific item
 function MerchantLord.recallItemByShort(shortDescription)
-  echo("\nFinding all information about: " .. shortDescription)
-  local item = MerchantLord.queryItemByShortDescription(shortDescription)
+  local sanitizedSortDescription = MerchantLord.trimString(shortDescription)
+  echo("\nFinding all information about: " .. sanitizedSortDescription)
+  local item = MerchantLord.queryItemByShortDescription(sanitizedSortDescription)
 
   if item == nil then
-    echo("\nCould not find information about: " .. shortDescription)
+    echo("\nCould not find information about: " .. sanitizedSortDescription)
+    return
   end
 
   local displayString = "\nDescription: "
@@ -754,28 +889,19 @@ function MerchantLord.findItemByString(searchString)
 end
 
 --Probes the next unprobed item in a shop
-function MerchantLord.probeNextItem()
+function MerchantLord.probeNextItem(silent)
   echo("\nFinding item to probe in current location")
-  local shop = MerchantLord.getShopInformationFromGMCP()
+  local itemData = MerchantLord.getNextUnprobedItem()
   
-  if shop == nil then
-    echo("\nYou are not in a shop!\n")
+  if itemData == nil then
+    if silent ~= nil then
+      echo("\nNo unprobed items found!\n")
+    end
     return
   end
   
-  local itemLocations = MerchantLord.queryItemLocationsByShop(shop)
-  local itemLocationTable = MerchantLord.formatItemLocationDataToShortDescriptions(itemLocations)
-  local items = MerchantLord.queryUndescribedItemsByShortDescription(itemLocationTable.shortDescriptions)
-
-  for itemIndex,item in pairs(items) do
-    if item.description == "" then
-      local itemLocation = itemLocationTable.itemLocations[item.short_description]
-      MerchantLord.setCurrentItem(item.short_description)
-      send("probe " .. itemLocation.item_name)
-      return
-    end
-  end
-  echo("\nNo unprobed items found!\n")
+  MerchantLord.setCurrentItem(itemData.item.short_description)
+  send("probe " .. itemData.itemLocation.item_name)
 end
 
 --Displays item location and price information for a short description equal to searchString
