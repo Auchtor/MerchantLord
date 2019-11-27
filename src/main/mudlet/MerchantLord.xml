@@ -57,6 +57,88 @@
 					<integer>1</integer>
 				</regexCodePropertyList>
 			</Trigger>
+			<TriggerGroup isActive="yes" isFolder="yes" isTempTrigger="no" isMultiline="yes" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>Item Description</name>
+				<script>MerchantLord.parseItemDescription(multimatches[2][2])</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>1</conditonLineDelta>
+				<mStayOpen>6</mStayOpen>
+				<mCommand></mCommand>
+				<packageName></packageName>
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile></mSoundFile>
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>^You inspect the item that is for sale\:$</string>
+					<string>^((?!You inspect the item that is for sale).*)$</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>1</integer>
+					<integer>1</integer>
+				</regexCodePropertyList>
+				<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+					<name>Liquid</name>
+					<script></script>
+					<triggerType>0</triggerType>
+					<conditonLineDelta>0</conditonLineDelta>
+					<mStayOpen>0</mStayOpen>
+					<mCommand></mCommand>
+					<packageName></packageName>
+					<mFgColor>#ff0000</mFgColor>
+					<mBgColor>#ffff00</mBgColor>
+					<mSoundFile></mSoundFile>
+					<colorTriggerFgColor>#000000</colorTriggerFgColor>
+					<colorTriggerBgColor>#000000</colorTriggerBgColor>
+					<regexCodeList>
+						<string>^[^\(]+\(([^)]+)\) sloshes about in it\.$</string>
+					</regexCodeList>
+					<regexCodePropertyList>
+						<integer>1</integer>
+					</regexCodePropertyList>
+				</Trigger>
+				<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+					<name>Crafter</name>
+					<script>MerchantLord.parseItemCrafter(matches[2])</script>
+					<triggerType>0</triggerType>
+					<conditonLineDelta>0</conditonLineDelta>
+					<mStayOpen>0</mStayOpen>
+					<mCommand></mCommand>
+					<packageName></packageName>
+					<mFgColor>#ff0000</mFgColor>
+					<mBgColor>#ffff00</mBgColor>
+					<mSoundFile></mSoundFile>
+					<colorTriggerFgColor>#000000</colorTriggerFgColor>
+					<colorTriggerBgColor>#000000</colorTriggerBgColor>
+					<regexCodeList>
+						<string>^It bears the distinctive mark of ([^\.]+)\.$</string>
+					</regexCodeList>
+					<regexCodePropertyList>
+						<integer>1</integer>
+					</regexCodePropertyList>
+				</Trigger>
+				<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+					<name>Designer</name>
+					<script>MerchantLord.parseItemDesigner(matches[2])</script>
+					<triggerType>0</triggerType>
+					<conditonLineDelta>0</conditonLineDelta>
+					<mStayOpen>0</mStayOpen>
+					<mCommand></mCommand>
+					<packageName></packageName>
+					<mFgColor>#ff0000</mFgColor>
+					<mBgColor>#ffff00</mBgColor>
+					<mSoundFile></mSoundFile>
+					<colorTriggerFgColor>#000000</colorTriggerFgColor>
+					<colorTriggerBgColor>#000000</colorTriggerBgColor>
+					<regexCodeList>
+						<string>^A small crafter's mark suggests that it is of ([^']+)'s design\.$</string>
+					</regexCodeList>
+					<regexCodePropertyList>
+						<integer>1</integer>
+					</regexCodePropertyList>
+				</Trigger>
+			</TriggerGroup>
 		</TriggerGroup>
 	</TriggerPackage>
 	<TimerPackage />
@@ -81,6 +163,27 @@
 				<packageName></packageName>
 				<regex>^ml find (.+)$</regex>
 			</Alias>
+			<Alias isActive="yes" isFolder="no">
+				<name>Probe Next Item</name>
+				<script>MerchantLord.probeNextItem(nil)</script>
+				<command></command>
+				<packageName></packageName>
+				<regex>^ml probe$</regex>
+			</Alias>
+			<Alias isActive="yes" isFolder="no">
+				<name>Recall Item</name>
+				<script>MerchantLord.recallItemByShort(matches[2])</script>
+				<command></command>
+				<packageName></packageName>
+				<regex>^ml recall (.+)$</regex>
+			</Alias>
+			<Alias isActive="yes" isFolder="no">
+				<name>Settings</name>
+				<script>MerchantLord.processSettingsCommand(matches[2])</script>
+				<command></command>
+				<packageName></packageName>
+				<regex>^ml settings (.+)$</regex>
+			</Alias>
 		</AliasGroup>
 	</AliasPackage>
 	<ActionPackage />
@@ -95,9 +198,9 @@ MerchantLord = MerchantLord or {}
 --Version
 ---------
 MerchantLord.version = MerchantLord.version or {
-  display = "1.1.0",
+  display = "1.2.0",
   major = 1,
-  minor = 1,
+  minor = 2,
   bugfix = 0
 }
 
@@ -110,6 +213,7 @@ MerchantLord.database = db:create("merchantlord", {
     short_description = "",
     description = "",
     designer = "",
+    crafter = "",
     contents = "",
     _index = {"short_description"},
     _unique = {"short_description"},
@@ -132,6 +236,13 @@ MerchantLord.database = db:create("merchantlord", {
     price = 0,
     last_seen = db:Timestamp("CURRENT_TIMESTAMP"),
     _index = { {"short_description", "shop"} }
+  },
+  settings = {
+    name = "default",
+    auto_probe = "off",
+    _index = {"name"},
+    _unique = {"name"},
+    _violations = "REPLACE"
   }
 })
 
@@ -168,26 +279,61 @@ function MerchantLord.makeStringFromTable(stringTable)
 
   for key,stringData in pairs(stringTable) do
     local stringLine = stringData.baseString
+    
+    if stringData.trim ~= nil then 
+      stringLine = MerchantLord.trimString(stringLine)
+    end
 
-        if stringData.trim ~= nil then
-                stringLine = MerchantLord.trimString(stringLine)
-        end
+    if stringData.padding == "right" then
+      stringLine = MerchantLord.padRight(stringLine,stringData.paddingLength)
+    elseif stringData.padding == "left" then
+      stringLine = MerchantLord.padLeft(stringLine,stringData.paddingLength)
+    end
 
-        if stringData.padding == "right" then
-                stringLine = MerchantLord.padRight(stringLine,stringData.paddingLength)
-        elseif stringData.padding == "left" then
-                stringLine = MerchantLord.padLeft(stringLine,stringData.paddingLength)
-        end
-
-        returnString = returnString .. stringLine
+    returnString = returnString .. stringLine
   end
 
   return returnString
 end
 
+--Taken from http://lua-users.org/wiki/SplitJoin
+--Splits a string into a table
+function MerchantLord.splitString(stringToSplit,separator)
+   local separator = separator or " "
+   local fields = {}
+   local pattern = string.format("([^%s]+)", separator)
+   string.gsub(stringToSplit,pattern, function(c) fields[#fields+1] = c end)
+   return fields
+end
+
 -----------------
 --Database Access
 -----------------
+
+--Gets the settings from local memory. Loads it if it is not in memory
+function MerchantLord.loadSettings()
+  local settings = db:fetch(MerchantLord.database.settings)[1]
+
+  return settings
+end
+
+--Creates and stores the merchantlord settings
+function MerchantLord.addSettings()
+    local settings = {
+      name = "default",
+      auto_probe = "off"
+    }
+    db:add(MerchantLord.database.settings,settings)
+end
+
+--Stores the settings in memory to the database
+function MerchantLord.updateSettings()
+    local settings = MerchantLord.settings
+    local databaseSettings = MerchantLord.loadSettings()
+    
+    databaseSettings.auto_probe = settings.auto_probe
+    db:update(MerchantLord.database.settings,databaseSettings)
+end
 
 --Retrieves the shops table
 function MerchantLord.queryAllShops()
@@ -196,95 +342,20 @@ function MerchantLord.queryAllShops()
   return shopsResult
 end
 
---Retrieves item locations with a short description equal to searchString
-function MerchantLord.queryItemLocationsByString(searchString)
-  local itemLocationsResult = db:fetch(MerchantLord.database.item_locations,
-    db:eq(
-      MerchantLord.database.item_locations.short_description,
-      searchString
-    )
-  )
-
-  return itemLocationsResult
-end
-
---Retrieves item data with a short description like searchString or a short name equal to searchString
-function MerchantLord.queryItemsByString(searchString)
-  local itemResult = db:fetch(MerchantLord.database.items,
-    db:OR(
-      db:like(
-        MerchantLord.database.items.short_description,
-        "% " .. searchString .. " %"
-      ),
-      db:like(
-        MerchantLord.database.items.short_description,
-        "% " .. searchString
-      ),
-      db:like(
-        MerchantLord.database.items.short_description,
-        searchString .. " %"
-      ),
-      db:eq(
-        MerchantLord.database.items.short_name,
-        searchString
-      )
-    )
-  )
-
-  return itemResult
-end
-
---Updates or inserts item data
-function MerchantLord.upsertItemDataFromShop(itemData)
-  local itemRow = db:fetch(
-    MerchantLord.database.items,
-    db:eq(
-      MerchantLord.dataabase.items.short_description,
-      itemData.short_description
-    )
-  )[1]
-  
-  if itemRow == nil then
-    db:add(MerchantLord.database.items,itemData)
-  end
-end
-
---Updates or inserts item location data
-function MerchantLord.upsertItemLocationData(itemLocationData)
-  local itemLocationRow = db:fetch(
-    MerchantLord.database.item_locations,
-    db:AND(
-      db:eq(
-        MerchantLord.database.item_locations.item_name,
-        itemLocationData.item_name
-      ),
-      db:eq(
-        MerchantLord.database.item_locations.shop,
-        itemLocationData.shop
-      )
-    )
+--Retrieves a shop by room number
+function MerchantLord.queryShopByNumber(shopNumber)
+  local shopRow = db:fetch(
+    MerchantLord.database.shops,
+    db:eq(MerchantLord.database.shops.room_num,shopNumber)
   )[1]
 
-
-  if itemLocationRow == nil then
-    db:add(MerchantLord.database.item_locations,itemLocationData)
-  else
-    itemLocationRow.item_name = itemLocationData.item_name
-    itemLocationRow.shop = itemLocationData.shop
-    itemLocationRow.quantity = itemLocationData.quantity
-    itemLocationRow.price = itemLocationData.price
-    itemLocationRow.last_seen = db:Timestamp("CURRENT_TIMESTAMP")
-    db:update(MerchantLord.database.item_locations,itemLocationRow)
-  end
+  return shopRow
 end
 
 --Updates or inserts shop information from GMCP
 function MerchantLord.upsertShop(shop)
-  local shopRow = db:fetch(
-    MerchantLord.database.shops,
-    db:eq(MerchantLord.database.shops.room_num,shop.room_num)
-  )[1]
-  
+  local shopRow = MerchantLord.queryShopByNumber(shop.room_num)
+
   if shopRow == nil then
     db:add(MerchantLord.database.shops,shop)
   else
@@ -309,9 +380,217 @@ function MerchantLord.updateProprietor(proprietor)
   end
 end
 
-----------------
---Data Utilities
-----------------
+--Retrieves item data with a short description like searchString or a short name equal to searchString
+function MerchantLord.queryItemsByString(searchString)
+  local itemResult = db:fetch(MerchantLord.database.items,
+    db:OR(
+      db:like(
+        MerchantLord.database.items.short_description,
+        "% " .. searchString .. " %"
+      ),
+      db:like(
+        MerchantLord.database.items.short_description,
+        "% " .. searchString
+      ),
+      db:like(
+        MerchantLord.database.items.short_description,
+        searchString .. " %"
+      ),
+      db:eq(
+        MerchantLord.database.items.short_name,
+        searchString
+      )
+    ),
+    MerchantLord.orderItemsByShortNameAndShortDescription()
+  )
+
+  return itemResult
+end
+
+--Retrieves item data with an exact short description
+function MerchantLord.queryItemByShortDescription(searchString)
+  local itemResult = db:fetch(MerchantLord.database.items,
+    db:eq(
+      MerchantLord.database.items.short_description,
+      searchString
+    )
+  )[1]
+
+  return itemResult
+end
+
+--Retrieves item data by short descriptions for items without a description
+function MerchantLord.queryUndescribedItemsByShortDescription(shortDescriptions)
+  local itemResult = db:fetch(MerchantLord.database.items,
+    db:AND(
+      db:in_(
+        MerchantLord.database.items.short_description,
+        shortDescriptions
+      ),
+      db:eq(
+        MerchantLord.database.items.description,""
+      )
+    )
+  )
+
+  return itemResult
+end
+
+--Updates item data with an exact description
+function MerchantLord.updateItemCrafter(currentItem,crafter)
+  local item = MerchantLord.queryItemByShortDescription(currentItem)
+  item.crafter = crafter
+  db:update(MerchantLord.database.items,item)
+end
+
+--Updates item data with an exact description
+function MerchantLord.updateItemDescription(currentItem,itemDescription)
+  local item = MerchantLord.queryItemByShortDescription(currentItem)
+  item.description = itemDescription
+  db:update(MerchantLord.database.items,item)
+end
+
+--Updates item data with an exact description
+function MerchantLord.updateItemDesigner(currentItem,designer)
+  local item = MerchantLord.queryItemByShortDescription(currentItem)
+  item.designer = designer
+  db:update(MerchantLord.database.items,item)
+end
+
+--Item Database order by clause for short name and short description
+function MerchantLord.orderItemsByShortNameAndShortDescription()
+  return {MerchantLord.database.items.short_name,MerchantLord.database.items.short_description}
+end
+
+--Updates or inserts item data
+function MerchantLord.upsertItemDataFromShop(itemData)
+  local itemRow = db:fetch(
+    MerchantLord.database.items,
+    db:eq(
+      MerchantLord.database.items.short_description,
+      itemData.short_description
+    )
+  )[1]
+  
+  if itemRow == nil then
+    db:add(MerchantLord.database.items,itemData)
+  end
+end
+
+--Retrieves item locations with a short description equal to searchString
+function MerchantLord.queryItemLocationsByString(searchString)
+  local itemLocationsResult = db:fetch(MerchantLord.database.item_locations,
+    db:eq(
+      MerchantLord.database.item_locations.short_description,
+      searchString
+    ),
+    MerchantLord.orderItemLocationsByPrice()
+  )
+
+  return itemLocationsResult
+end
+
+--Retrieves item locations by shop
+function MerchantLord.queryItemLocationsByShop(shop)
+  local itemLocationsResult = db:fetch(MerchantLord.database.item_locations,
+    db:eq(
+      MerchantLord.database.item_locations.shop,
+      shop.room_num
+    )
+  )
+
+  return itemLocationsResult
+end
+
+--Item Locations Database order by price
+function MerchantLord.orderItemLocationsByPrice()
+  return {MerchantLord.database.item_locations.price}
+end
+
+--Updates or inserts item location data
+function MerchantLord.upsertItemLocationData(itemLocationData)
+  local itemLocationRow = db:fetch(
+    MerchantLord.database.item_locations,
+    db:AND(
+      db:eq(
+        MerchantLord.database.item_locations.item_name,
+        itemLocationData.item_name
+      ),
+      db:eq(
+        MerchantLord.database.item_locations.shop,
+        itemLocationData.shop
+      )
+    )
+  )[1]
+
+
+  if itemLocationRow == nil then
+    db:add(MerchantLord.database.item_locations,itemLocationData)
+  else
+    itemLocationRow.short_description = itemLocationData.short_description
+    itemLocationRow.item_name = itemLocationData.item_name
+    itemLocationRow.shop = itemLocationData.shop
+    itemLocationRow.quantity = itemLocationData.quantity
+    itemLocationRow.price = itemLocationData.price
+    itemLocationRow.last_seen = db:Timestamp("CURRENT_TIMESTAMP")
+    db:update(MerchantLord.database.item_locations,itemLocationRow)
+  end
+end
+
+----------------------------
+--Data Utilities and Helpers
+----------------------------
+
+--Gets the settings from local memory. Loads it if it is not in memory
+function MerchantLord.getSettings()
+  local settings = MerchantLord.settings
+  
+  if settings == nil then
+    settings = MerchantLord.loadSettings()
+
+    if settings == nil then
+      MerchantLord.addSettings()
+      --this is fine as it will resolve and pass this check after addSettings
+      settings = MerchantLord.loadSettings()
+    end
+    MerchantLord.settings = settings
+  end
+
+  return settings
+end
+
+--Sets autoprobe for merchantlord
+function MerchantLord.setAutoProbe(status)
+  MerchantLord.getSettings()
+  
+  local validStatus = string.lower(status)
+
+  if validStatus == "on" then
+    MerchantLord.settings.auto_probe = "on"
+  elseif validStatus == "off" then
+    MerchantLord.settings.auto_probe = "off"
+  end
+  
+  echo("\nMerchant Lord Autoprobe: " .. MerchantLord.getAutoProbe() .. "\n")
+  MerchantLord.updateSettings()
+end
+
+--Gets the autoprobe setting safely
+function MerchantLord.getAutoProbe()
+  MerchantLord.getSettings()
+  return MerchantLord.settings.auto_probe
+end
+
+--Gets shop information from GMCP and calls database storage
+function MerchantLord.getShopInformationFromGMCP()
+  local shop = {
+    room_num = gmcp.Room.Info.num,
+    area = gmcp.Room.Info.area,
+    name = gmcp.Room.Info.name
+  }
+
+  return shop
+end
 
 --Formats shop data into a room number indexed table
 function MerchantLord.formatShopDataToRoomNumberTable(shopData)
@@ -329,18 +608,152 @@ function MerchantLord.formatShopDataToRoomNumberTable(shopData)
   return shopTable
 end
 
+--Formats item location data into a short description indexed table
+function MerchantLord.formatItemLocationDataToShortDescriptions(itemLocationData)
+  local itemLocationTable = {
+    itemLocations = {},
+    shortDescriptions = {}
+  }
+
+  for key,itemLocation in pairs(itemLocationData) do
+    itemLocationTable.itemLocations[itemLocation.short_description] = {
+      item_name = itemLocation.item_name,
+      short_description = itemLocation.short_description
+    }
+    table.insert(itemLocationTable.shortDescriptions,itemLocation.short_description)
+  end
+
+  return itemLocationTable
+end
+
+--Sorts item location data by price and returns it
+function MerchantLord.getItemLocationDataSortedByPrice(itemLocations)
+  local priceTable = {
+    priceArray = {},
+    itemLocationsByPrice = {}
+  }
+
+  for key,itemLocation in pairs(itemLocations) do
+    if priceTable.itemLocationsByPrice[itemLocation.price] == nil then
+      table.insert(priceTable.priceArray,itemLocation.price)
+      priceTable.itemLocationsByPrice[itemLocation.price] = {}
+    end
+
+    table.insert(priceTable.itemLocationsByPrice[itemLocation.price],itemLocation)
+  end
+  table.sort(priceTable.priceArray)
+  
+  return priceTable
+end
+
+--Sorts item location price data by area and returns it
+function MerchantLord.getItemLocationDataSortedByPriceAndArea(priceTable,shopTable)
+  --Despite this being inefficient, the logic is easier to follow. Keeping it like this
+  --TODO: Consider refactoring into separate functions to avoid pyramid of doom
+  local priceAreaTable = {
+    priceAreaArray = {},
+    itemLocationsByPriceAndArea = {}
+  }
+  
+  for priceIndex,price in pairs(priceTable.priceArray) do
+    priceAreaTable.priceAreaArray[price] = {}
+    priceAreaTable.itemLocationsByPriceAndArea[price] = {}
+    
+    for itemPrice, itemLocation in pairs(priceTable.itemLocationsByPrice[price]) do
+      local shop = shopTable[itemLocation.shop]
+      if shop ~= nil then
+        if priceAreaTable.itemLocationsByPriceAndArea[price][shop.area] == nil then
+          table.insert(priceAreaTable.priceAreaArray[price],shop.area)
+          priceAreaTable.itemLocationsByPriceAndArea[price][shop.area] = {}
+        end
+        table.insert(priceAreaTable.itemLocationsByPriceAndArea[itemLocation.price][shop.area],itemLocation)
+      else
+        if priceAreaTable.itemLocationsByPriceAndArea[itemLocation.price]["Unknown Area"] == nil then
+          table.insert(priceAreaTable.priceAreaArray[itemLocation.price],"Unknown Area")
+          priceAreaTable.itemLocationsByPriceAndArea[itemLocation.price]["Unknown Area"] = {}
+        end
+        table.insert(priceAreaTable.itemLocationsByPriceAndArea[itemLocation.price]["Unknown Area"],itemLocation)
+      end
+    end
+  end
+
+  for price,priceAreas in pairs(priceAreaTable.priceAreaArray) do
+    table.sort(priceAreas)
+  end
+  
+  return priceAreaTable
+end
+
+--Gets the next unprobed item for a shop
+function MerchantLord.getNextUnprobedItem()
+  local shop = MerchantLord.getShopInformationFromGMCP()
+  
+  if shop == nil then
+    return nil
+  end
+  
+  local itemLocations = MerchantLord.queryItemLocationsByShop(shop)
+  local itemLocationTable = MerchantLord.formatItemLocationDataToShortDescriptions(itemLocations)
+  local items = MerchantLord.queryUndescribedItemsByShortDescription(itemLocationTable.shortDescriptions)
+
+  for itemIndex,item in pairs(items) do
+    if item.description == "" then
+      local itemLocation = itemLocationTable.itemLocations[item.short_description]
+      return {
+        item = item,
+        itemLocation = itemLocation
+      }
+    end
+  end
+  
+  return nil
+end
+
+--Clears the current item for data harvest
+function MerchantLord.clearCurrentItem()
+  if MerchantLord.currentItem == nil then
+    return
+  end
+
+  if MerchantLord.currentItemClearCount == nil then
+    MerchantLord.currentItemClearCount = 1
+    if MerchantLord.getAutoProbe() == "on" then
+      tempTimer(1, [[MerchantLord.probeNextItem(true)]])
+    end
+  else
+    MerchantLord.currentItemClearCount = nil
+    MerchantLord.currentItem = nil
+  end
+end
+
+--Sets the current item for data harvest
+function MerchantLord.setCurrentItem(item)
+  MerchantLord.currentItemClearCount = nil
+  MerchantLord.currentItem = item
+end
+
 -----------------
 --Exposed Methods
 -----------------
 
+--Entry point for settings command
+function MerchantLord.processSettingsCommand(settingsArguments)
+  local argumentsTable = MerchantLord.splitString(settingsArguments," ")
+  local settingsCommand = string.lower(argumentsTable[1])
+
+  --TODO: Make this a table to be more elegant.
+  if settingsCommand == "autoprobe" then
+    MerchantLord.setAutoProbe(argumentsTable[2])
+  else
+    echo("\nDid not recognize the Merchant Lord setting: " .. argumentsTable .. ".\n")    
+  end
+end
+
 --Formats shop information from GMCP and calls database storage
 function MerchantLord.parseShopInformationFromGMCP()
-  local shop = {
-    room_num = gmcp.Room.Info.num,
-    area = gmcp.Room.Info.area,
-    name = gmcp.Room.Info.name
-  }
-    MerchantLord.upsertShop(shop)
+  local shop = MerchantLord.getShopInformationFromGMCP()
+
+  MerchantLord.upsertShop(shop)
 end
 
 --Formats proprietor information from Wares Trigger
@@ -366,6 +779,66 @@ function MerchantLord.parseItemFromShop(matchedValues)
   
   MerchantLord.upsertItemDataFromShop(itemData.item)
   MerchantLord.upsertItemLocationData(itemData.locationData)
+end
+
+--Formats an item's description and stores it
+function MerchantLord.parseItemDescription(itemDescription)
+  if MerchantLord.currentItem ~= nil then
+    MerchantLord.updateItemDescription(MerchantLord.currentItem,itemDescription)
+  end
+end
+
+--Formats an item's crafter and stores it
+function MerchantLord.parseItemCrafter(crafter)
+  if MerchantLord.currentItem ~= nil then
+    MerchantLord.updateItemCrafter(MerchantLord.currentItem,crafter)
+  end
+end
+
+--Formats an item's designer and stores it
+function MerchantLord.parseItemDesigner(designer)
+  if MerchantLord.currentItem ~= nil then
+    MerchantLord.updateItemDesigner(MerchantLord.currentItem,designer)
+  end
+end
+
+--Displays all relevant information about a specific item
+function MerchantLord.recallItemByShort(shortDescription)
+  local sanitizedSortDescription = MerchantLord.trimString(shortDescription)
+  echo("\nFinding all information about: " .. sanitizedSortDescription)
+  local item = MerchantLord.queryItemByShortDescription(sanitizedSortDescription)
+
+  if item == nil then
+    echo("\nCould not find information about: " .. sanitizedSortDescription)
+    return
+  end
+
+  local displayString = "\nDescription: "
+  
+  if item.description ~= nil then
+    displayString = displayString .. item.description
+  else
+    displayString = displayString .. "Unknown"
+  end
+  
+  displayString = displayString .. "\nItem Type: "
+  
+  if item.short_name ~= "" then
+    displayString = displayString .. item.short_name
+  else
+    displayString = displayString .. "Unknown"
+  end
+  
+  if item.crafter ~= "" then
+    displayString = displayString .. "\nCrafter: " .. item.crafter
+  end
+  
+  if item.designer ~= "" then
+    displayString = displayString .. "\nDesigner: " .. item.designer
+  end
+  
+  displayString = displayString .. "\n"
+  echo(displayString)
 end
 
 --Displays a list of items like searchString
@@ -415,13 +888,32 @@ function MerchantLord.findItemByString(searchString)
   end
 end
 
+--Probes the next unprobed item in a shop
+function MerchantLord.probeNextItem(silent)
+  echo("\nFinding item to probe in current location")
+  local itemData = MerchantLord.getNextUnprobedItem()
+  
+  if itemData == nil then
+    if silent ~= nil then
+      echo("\nNo unprobed items found!\n")
+    end
+    return
+  end
+  
+  MerchantLord.setCurrentItem(itemData.item.short_description)
+  send("probe " .. itemData.itemLocation.item_name)
+end
+
 --Displays item location and price information for a short description equal to searchString
 function MerchantLord.findItemLocationsByString(searchString)
   echo("\nSearching database for locations of: " .. searchString .. "\n")
-  local itemLocations = MerchantLord.searchItemLocationsByString(searchString)
+  local itemLocations = MerchantLord.queryItemLocationsByString(searchString)
 
   local shopData = MerchantLord.queryAllShops()
   local shopTable = MerchantLord.formatShopDataToRoomNumberTable(shopData)
+
+  local priceTable = MerchantLord.getItemLocationDataSortedByPrice(itemLocations)
+  local priceAreaTable = MerchantLord.getItemLocationDataSortedByPriceAndArea(priceTable,shopTable)
 
   local heading = {
     {
@@ -435,17 +927,17 @@ function MerchantLord.findItemLocationsByString(searchString)
       paddingLength = 3
     },
     {
-      baseString = "Room Number",
+      baseString = "Room #",
       padding = "right",
       paddingLength = 8
     },
     {
       baseString = "Shop Area",
-      padding = "left",
+      padding = "right",
       paddingLength = 21
     },
     {
-      baseString = " - "
+      baseString = ": "
     },
     {
       baseString = "Shop Name"
@@ -453,46 +945,52 @@ function MerchantLord.findItemLocationsByString(searchString)
   }
 
   echo("\n" .. MerchantLord.makeStringFromTable(heading))
-
-  for key,itemLocation in pairs(itemLocations) do
-    local itemLocationStringTable = {
-      {
-        baseString = itemLocation.price,
-        padding = "left",
-        paddingLength = 8
-      },
-      {
-        baseString = ":",
-        padding = "right",
-        paddingLength = 3
-      },
-      {
-        baseString = itemLocation.shop,
-        padding = "right",
-        paddingLength = 8
-      }
-    }
-
-    if shopTable[itemLocation.shop] ~= nil then
-      table.insert(itemLocationStringTable,
-        {
-          baseString = shopTable[itemLocation.shop].area,
-          padding = "left",
-          paddingLength = 21
+  
+  for _,price in pairs(priceTable.priceArray) do
+    for areaIndex,area in pairs(priceAreaTable.priceAreaArray[price]) do
+      local priceItemLocations = priceAreaTable.itemLocationsByPriceAndArea[price][area]
+  
+      for _,itemLocation in pairs(priceItemLocations) do
+        local itemLocationStringTable = {
+          {
+            baseString = itemLocation.price,
+            padding = "left",
+            paddingLength = 8
+          },
+          {
+            baseString = ":",
+            padding = "right",
+            paddingLength = 3
+          },
+          {
+            baseString = itemLocation.shop,
+            padding = "right",
+            paddingLength = 8
+          }
         }
-      )
-      table.insert(itemLocationStringTable,
-        {
-          baseString = " - "
-        }
-      )
-      table.insert(itemLocationStringTable,
-        {
-          baseString = shopTable[itemLocation.shop].name
-        }
-      )
+    
+        if shopTable[itemLocation.shop] ~= nil then
+          table.insert(itemLocationStringTable,
+            {
+              baseString = shopTable[itemLocation.shop].area,
+              padding = "left",
+              paddingLength = 21
+            }
+          )
+          table.insert(itemLocationStringTable,
+            {
+              baseString = ": "
+            }
+          )
+          table.insert(itemLocationStringTable,
+            {
+              baseString = shopTable[itemLocation.shop].name
+            }
+          )
+        end
+        echo("\n" .. MerchantLord.makeStringFromTable(itemLocationStringTable))
+      end
     end
-    echo("\n" .. MerchantLord.makeStringFromTable(itemLocationStringTable))
   end
 end</script>
 			<eventHandlerList />
@@ -511,6 +1009,16 @@ end</script>
 end</script>
 				<eventHandlerList>
 					<string>gmcp.Room.Info</string>
+				</eventHandlerList>
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>MLMGMCPCharVitals</name>
+				<packageName></packageName>
+				<script>function MLMGMCPCharVitals(event)
+  MerchantLord.clearCurrentItem()
+end</script>
+				<eventHandlerList>
+					<string>gmcp.Char.Vitals</string>
 				</eventHandlerList>
 			</Script>
 		</ScriptGroup>
